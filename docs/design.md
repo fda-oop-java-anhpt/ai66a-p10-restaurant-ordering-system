@@ -4,11 +4,12 @@
 
 Liệt kê các class chính trong hệ thống và mô tả ngắn gọn vai trò của từng class.
 
-| Class | Package | Vai trò |
+| Class | Package | Role |
 |------|--------|--------|
-| | | |
-| | | |
-| | | |
+|Users  |model |Represents user-related information and is used to store and tranfer user information between application layers. |
+|AuthService|service |Handles business logic related to user authentication, including verifying login credentials and coordinating data access. |
+|LoginDAO |dao |Perform queries against the database to verify user login credentials, such as user ID, and retrieve user roles. |
+|UserDAO|dao |Accessing and managing user information in the database includes adding users, reading, updating, and deleting user information,... . |
 
 ---
 
