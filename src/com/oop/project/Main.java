@@ -6,7 +6,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import com.oop.project.db.DBConnection;
-import com.oop.project.ui.MainFrame;
+import com.oop.project.ui.LoginFrame;
 
 public class Main {
 
@@ -14,12 +14,12 @@ public class Main {
         Connection connection = null;
         try {
             connection = DBConnection.getConnection();
-            System.out.println("✅ Database connected");
+            System.out.println("Database connected");
         } catch (RuntimeException e) {
             System.err.println(e.getMessage());
             JOptionPane.showMessageDialog(
                     null,
-                    e.getMessage() + "\n\nFix by setting DB_PASSWORD (and optionally DB_USER/DB_URL).",
+                    e.getMessage() + "\n\nFix by setting DB_URL/DB_USER/DB_PASSWORD.",
                     "Database connection failed",
                     JOptionPane.ERROR_MESSAGE
             );
@@ -35,8 +35,8 @@ public class Main {
         }
 
         SwingUtilities.invokeLater(() -> {
-            MainFrame frame = new MainFrame();
-            frame.setVisible(true);
+            //MainFrame frame = new MainFrame();
+            new LoginFrame().setVisible(true);
         });
     }
 }
