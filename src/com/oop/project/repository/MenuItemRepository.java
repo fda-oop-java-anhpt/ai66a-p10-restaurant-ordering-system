@@ -32,7 +32,7 @@ public class MenuItemRepository {
                 items.add(map(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Cannot load menu items by category", e);
         }
         return items;
     }
@@ -47,9 +47,24 @@ public class MenuItemRepository {
             if (rs.next()) return map(rs);
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Cannot load menu item", e);
         }
         return null;
+    }
+
+    public void addFood(String name, String description, BigDecimal basePrice, int categoryId) {
+        String sql = "INSERT INTO menu_items(name, description, base_price, category_id) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DBConnection.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, name);
+            ps.setString(2, description);
+            ps.setBigDecimal(3, basePrice);
+            ps.setInt(4, categoryId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot add menu item", e);
+        }
     }
 
     public void updatePrice(int menuItemId, BigDecimal newPrice) {
@@ -60,9 +75,9 @@ public class MenuItemRepository {
             ps.setBigDecimal(1, newPrice);
             ps.setInt(2, menuItemId);
             ps.executeUpdate();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            } 
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot update menu item price", e);
+        }
     }
 
     private MenuItem map(ResultSet rs) throws SQLException {
