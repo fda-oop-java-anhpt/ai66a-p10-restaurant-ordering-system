@@ -3,15 +3,20 @@ package com.oop.project.ui.panels;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.math.BigDecimal;
 import java.util.List;
 
 import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
@@ -29,6 +34,8 @@ public class MenuPanel extends JPanel {
 
     private final JList<MenuCategory> categoryList = new JList<>();
     private final JTable itemTable = new JTable();
+    private final JButton addFoodBtn = new JButton("Add");
+    private final JButton editPriceBtn = new JButton("Edit Price");
 
     public MenuPanel(User user) {
         this.currentUser = user;
@@ -42,10 +49,7 @@ public class MenuPanel extends JPanel {
 
         add(new JScrollPane(categoryList), BorderLayout.WEST);
         add(new JScrollPane(itemTable), BorderLayout.CENTER);
-
-        if (user.isManager()) {
-            add(buildAdminPanel(), BorderLayout.SOUTH);
-        }
+        add(buildActionPanel(), BorderLayout.SOUTH);
 
         loadCategories();
     }
@@ -69,19 +73,107 @@ public class MenuPanel extends JPanel {
         ));
     }
 
-    private JPanel buildAdminPanel() {
-        JButton editPriceBtn = new JButton("Edit Price");
-
+    private JPanel buildActionPanel() {
+        addFoodBtn.addActionListener(e -> showAddFoodDialog());
         editPriceBtn.addActionListener(e -> editSelectedPrice());
+        editPriceBtn.setEnabled(currentUser.isManager());
 
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        panel.add(addFoodBtn);
         panel.add(editPriceBtn);
         return panel;
     }
 
+    private void showAddFoodDialog() {
+        List<MenuCategory> categories = menuService.getAllCategories();
+        if (categories.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                this,
+                "No category available for new food.",
+                "Add Food",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        JTextField nameField = new JTextField();
+        JTextField descriptionField = new JTextField();
+        JTextField priceField = new JTextField();
+        JComboBox<MenuCategory> categoryCombo = new JComboBox<>(categories.toArray(MenuCategory[]::new));
+
+        MenuCategory selectedCategory = categoryList.getSelectedValue();
+        if (selectedCategory != null) {
+            for (MenuCategory category : categories) {
+                if (category.getId() == selectedCategory.getId()) {
+                    categoryCombo.setSelectedItem(category);
+                    break;
+                }
+            }
+        }
+
+        JPanel formPanel = new JPanel(new GridLayout(0, 1, 0, 8));
+        formPanel.add(new JLabel("Food name"));
+        formPanel.add(nameField);
+        formPanel.add(new JLabel("Description"));
+        formPanel.add(descriptionField);
+        formPanel.add(new JLabel("Base price"));
+        formPanel.add(priceField);
+        formPanel.add(new JLabel("Category"));
+        formPanel.add(categoryCombo);
+
+        while (true) {
+            int result = JOptionPane.showConfirmDialog(
+                this,
+                formPanel,
+                "Add Food",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+            );
+
+            if (result != JOptionPane.OK_OPTION) {
+                return;
+            }
+
+            String name = nameField.getText().trim();
+            String description = descriptionField.getText().trim();
+            String priceText = priceField.getText().trim();
+            MenuCategory category = (MenuCategory) categoryCombo.getSelectedItem();
+
+            if (name.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Food name is required.");
+                continue;
+            }
+
+            if (category == null) {
+                JOptionPane.showMessageDialog(this, "Please select a category.");
+                continue;
+            }
+
+            BigDecimal price;
+            try {
+                price = new BigDecimal(priceText);
+                if (price.compareTo(BigDecimal.ZERO) < 0) {
+                    JOptionPane.showMessageDialog(this, "Base price must be greater than or equal to 0.");
+                    continue;
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Base price must be a valid number.");
+                continue;
+            }
+
+            menuService.addFood(name, description, price, category.getId());
+            selectCategory(category.getId());
+            loadMenuItems(category.getId());
+            return;
+        }
+    }
+
     private void editSelectedPrice() {
         int row = itemTable.getSelectedRow();
-        if (row == -1) return;
+        if (row == -1) {
+            JOptionPane.showMessageDialog(this, "Please select a food item first.");
+            return;
+        }
 
         int itemId = (int) itemTable.getValueAt(row, 0);
         String currentPrice = itemTable.getValueAt(row, 3).toString();
@@ -92,22 +184,31 @@ public class MenuPanel extends JPanel {
             currentPrice
         );
 
-        if (input != null) {
+        if (input == null) {
+            return;
+        }
+
+        try {
             adminService.updatePrice(
-                currentUser, 
-                itemId, 
-                new BigDecimal(input)
+                currentUser,
+                itemId,
+                new BigDecimal(input.trim())
             );
 
-            // refresh
             MenuCategory cat = categoryList.getSelectedValue();
-            loadMenuItems(cat.getId());
+            if (cat != null) {
+                loadMenuItems(cat.getId());
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Price must be a valid number.");
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Update Price", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void loadCategories() {
         List<MenuCategory> categories = menuService.getAllCategories();
-        categoryList.setListData(categories.toArray(new MenuCategory[0]));
+        categoryList.setListData(categories.toArray(MenuCategory[]::new));
     }
 
     private void loadMenuItems(int categoryId) {
@@ -122,6 +223,17 @@ public class MenuPanel extends JPanel {
                 item.getDescription(),
                 item.getBasePrice()
             });
+        }
+    }
+
+    private void selectCategory(int categoryId) {
+        ListModel<MenuCategory> model = categoryList.getModel();
+        for (int index = 0; index < model.getSize(); index++) {
+            MenuCategory category = model.getElementAt(index);
+            if (category.getId() == categoryId) {
+                categoryList.setSelectedIndex(index);
+                return;
+            }
         }
     }
 }
