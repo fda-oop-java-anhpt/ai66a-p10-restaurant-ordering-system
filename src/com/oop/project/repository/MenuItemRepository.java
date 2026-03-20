@@ -13,6 +13,28 @@ import com.oop.project.model.MenuItem;
 
 public class MenuItemRepository {
     
+    public List<MenuItem> findAll() {
+        List<MenuItem> items = new ArrayList<>();
+        String sql = """
+            SELECT id, name, description, base_price, category_id, created_at
+            FROM menu_items
+            ORDER BY name
+                """;
+
+        try (Connection conn = DBConnection.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                items.add(map(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot load all menu items", e);
+        }
+
+        return items;
+    }
+    
     public List<MenuItem> findbyCategory(int CategoryId) {
         List<MenuItem> items = new ArrayList<>();
         String sql = """
