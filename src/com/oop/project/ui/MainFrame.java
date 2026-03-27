@@ -26,7 +26,7 @@ public class MainFrame extends JFrame {
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Menu", new MenuPanel(currentUser));
         tabs.addTab("Cart", new CartPanel(/*currentUser */));
-        tabs.addTab("Orders", new OrdersPanel(/*currentUser */));
+        tabs.addTab("Orders", new OrdersPanel(currentUser));
         if (currentUser.isManager()) {
             tabs.addTab("Dashboard", new DashboardPanel(/*currentUser */));
         }
