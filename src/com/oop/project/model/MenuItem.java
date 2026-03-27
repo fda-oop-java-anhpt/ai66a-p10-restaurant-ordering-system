@@ -40,4 +40,9 @@ public class MenuItem {
         this.basePrice = basePrice;
     }
 
+    @Override
+    public String toString() {
+        return name;
+    }
+
 }

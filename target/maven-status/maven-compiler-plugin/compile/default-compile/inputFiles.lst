@@ -1,7 +1,26 @@
-C:\Users\LENOVO\OneDrive - National Economics University\[OOP JAVA] - Project 10\ai66a-p10-restaurant-ordering-system\src\com\oop\project\db\DBConnection.java
-C:\Users\LENOVO\OneDrive - National Economics University\[OOP JAVA] - Project 10\ai66a-p10-restaurant-ordering-system\src\com\oop\project\Main.java
-C:\Users\LENOVO\OneDrive - National Economics University\[OOP JAVA] - Project 10\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\MainFrame.java
-C:\Users\LENOVO\OneDrive - National Economics University\[OOP JAVA] - Project 10\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\panels\CartPanel.java
-C:\Users\LENOVO\OneDrive - National Economics University\[OOP JAVA] - Project 10\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\panels\DashboardPanel.java
-C:\Users\LENOVO\OneDrive - National Economics University\[OOP JAVA] - Project 10\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\panels\MenuPanel.java
-C:\Users\LENOVO\OneDrive - National Economics University\[OOP JAVA] - Project 10\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\panels\OrdersPanel.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\dao\LoginLogDAO.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\dao\MenuDAO.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\dao\UserDAO.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\db\DBConnection.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\exception\UnauthorizedException.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\Main.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\model\CustomizationOption.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\model\MenuCategory.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\model\MenuItem.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\model\OrderDraft.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\model\OrderItem.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\model\User.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\repository\AuditLogRepository.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\repository\CustomizationOptionRepository.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\repository\MenuCategoryRepository.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\repository\MenuItemRepository.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\service\AuthService.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\service\MenuAdminService.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\service\MenuService.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\service\OrderService.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\LoginFrame.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\MainFrame.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\panels\CartPanel.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\panels\DashboardPanel.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\panels\MenuPanel.java
+C:\Users\MY PC\Documents\java\javaproject\test\ai66a-p10-restaurant-ordering-system\src\com\oop\project\ui\panels\OrdersPanel.java

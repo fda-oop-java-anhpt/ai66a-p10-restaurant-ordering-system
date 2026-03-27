@@ -8,7 +8,7 @@ public class DBConnection {
 
     private static final String DEFAULT_URL = "jdbc:postgresql://localhost:5432/restaurant_pos";
     private static final String DEFAULT_USER = "postgres";
-    private static final String DEFAULT_PASSWORD = "minh2011@A";
+    private static final String DEFAULT_PASSWORD = "Hoang12345";
 
     private static String getSetting(String key, String defaultValue) {
         String sysProp = System.getProperty(key);
