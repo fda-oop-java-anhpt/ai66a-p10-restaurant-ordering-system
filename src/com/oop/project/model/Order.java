@@ -10,17 +10,20 @@ public class Order {
     private double subtotal;
     private double tax;
     private double serviceFee;
+    private double total;
     private LocalDateTime createdAt;
     private List<OrderItem> items;
 
     // Constructor đầy đủ
     public Order(int id, int staffId, double subtotal, double tax,
-                 double serviceFee, LocalDateTime createdAt, List<OrderItem> items) {
+                 double serviceFee, double total,
+                 LocalDateTime createdAt, List<OrderItem> items) {
         this.id = id;
         this.staffId = staffId;
         this.subtotal = subtotal;
         this.tax = tax;
         this.serviceFee = serviceFee;
+        this.total = total;
         this.createdAt = createdAt;
         this.items = items;
     }
@@ -39,9 +42,7 @@ public class Order {
 
     public double getServiceFee() { return serviceFee; }
 
-    public double getTotal() {
-        return subtotal + tax + serviceFee;
-    }
+    public double getTotal() { return total; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 
@@ -58,6 +59,8 @@ public class Order {
 
     public void setServiceFee(double serviceFee) { this.serviceFee = serviceFee; }
 
+    public void setTotal(double total) { this.total = total; }
+
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public void setItems(List<OrderItem> items) { this.items = items; }
@@ -71,8 +74,9 @@ public class Order {
                 ", subtotal=" + subtotal +
                 ", tax=" + tax +
                 ", serviceFee=" + serviceFee +
-                ", total=" + getTotal() +
+                ", total=" + total +
                 ", createdAt=" + createdAt +
+                ", items=" + (items != null ? items.size() : 0) +
                 '}';
     }
 }
