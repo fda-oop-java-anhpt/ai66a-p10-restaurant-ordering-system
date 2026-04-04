@@ -5,6 +5,9 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -18,24 +21,34 @@ import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.AbstractButton;
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.InputMap;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
+import javax.swing.SwingConstants;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 
 import com.oop.project.model.CustomizationOption;
 import com.oop.project.model.MenuItem;
@@ -84,6 +97,7 @@ public class OrdersPanel extends JPanel {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         configureMenuComboRenderer();
+        configureQuantityField();
 
         buildEditorPanel();
         buildTablePanel();
@@ -126,7 +140,9 @@ public class OrdersPanel extends JPanel {
         editor.add(customizationScroll);
 
         editor.add(new JLabel("Quantity"));
-        quantityField.setColumns(3);
+        quantityField.setColumns(5);
+        quantityField.setHorizontalAlignment(SwingConstants.CENTER);
+        quantityField.setPreferredSize(new Dimension(72, quantityField.getPreferredSize().height));
         JPanel quantityPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         quantityPanel.add(decreaseQtyBtn);
         quantityPanel.add(quantityField);
@@ -193,6 +209,39 @@ public class OrdersPanel extends JPanel {
         orderTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 syncEditorFromSelectedRow();
+            }
+        });
+    }
+
+    private void configureQuantityField() {
+        ((AbstractDocument) quantityField.getDocument()).setDocumentFilter(new PositiveQuantityFilter());
+        quantityField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                quantityField.setText(String.valueOf(parseQuantityOrDefault()));
+            }
+        });
+
+        InputMap inputMap = quantityField.getInputMap(JComponent.WHEN_FOCUSED);
+        ActionMap actionMap = quantityField.getActionMap();
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "increaseQty");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), "decreaseQty");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ADD, 0), "increaseQty");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_SUBTRACT, 0), "decreaseQty");
+        inputMap.put(KeyStroke.getKeyStroke('+'), "increaseQty");
+        inputMap.put(KeyStroke.getKeyStroke('-'), "decreaseQty");
+
+        actionMap.put("increaseQty", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                increaseQuantity();
+            }
+        });
+        actionMap.put("decreaseQty", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                decreaseQuantity();
             }
         });
     }
@@ -399,6 +448,29 @@ public class OrdersPanel extends JPanel {
             return Math.max(1, qty);
         } catch (IllegalArgumentException ex) {
             return 1;
+        }
+    }
+
+    private static class PositiveQuantityFilter extends DocumentFilter {
+        @Override
+        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+            replace(fb, offset, 0, string, attr);
+        }
+
+        @Override
+        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+            String current = fb.getDocument().getText(0, fb.getDocument().getLength());
+            String replacement = text == null ? "" : text;
+            String candidate = current.substring(0, offset) + replacement + current.substring(offset + length);
+
+            if (candidate.matches("([1-9]\\d*)?")) {
+                super.replace(fb, offset, length, text, attrs);
+            }
+        }
+
+        @Override
+        public void remove(FilterBypass fb, int offset, int length) throws BadLocationException {
+            replace(fb, offset, length, "", null);
         }
     }
 
