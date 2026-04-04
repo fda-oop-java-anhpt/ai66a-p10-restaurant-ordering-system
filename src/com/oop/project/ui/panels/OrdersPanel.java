@@ -61,7 +61,7 @@ public class OrdersPanel extends JPanel {
 
     private final User currentUser;
     private final OrderService orderService = new OrderService();
-    private final DecimalFormat priceFormat = new DecimalFormat("#,##0.##");
+    private final DecimalFormat priceFormat = new DecimalFormat("#,##0");
     private OrderDraft currentDraft;
 
     private final JComboBox<MenuItem> menuCombo = new JComboBox<>();
@@ -74,9 +74,9 @@ public class OrdersPanel extends JPanel {
     private final JButton decreaseQtyBtn = new JButton("-");
     private final JButton increaseQtyBtn = new JButton("+");
 
-    private final JLabel unitPriceLabel = new JLabel("Unit price: 0");
-    private final JLabel lineTotalLabel = new JLabel("Line total: 0");
-    private final JLabel subtotalLabel = new JLabel("Subtotal: 0");
+    private final JLabel unitPriceLabel = new JLabel("Unit price: 0 VND");
+    private final JLabel lineTotalLabel = new JLabel("Line total: 0 VND");
+    private final JLabel subtotalLabel = new JLabel("Subtotal: 0 VND");
 
     private final JButton newOrderBtn = new JButton("New Order");
     private final JButton addOrUpdateBtn = new JButton("Add Item");
@@ -120,7 +120,7 @@ public class OrdersPanel extends JPanel {
             ) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 if (value instanceof MenuItem item) {
-                    setText(item.getName() + " - " + priceFormat.format(item.getBasePrice()));
+                    setText(item.getName() + " - " + formatCurrency(item.getBasePrice()));
                 }
                 return this;
             }
@@ -336,8 +336,8 @@ public class OrdersPanel extends JPanel {
                 item.getMenuItem().getName(),
                 item.getCustomizationSummary(),
                 item.getQuantity(),
-                item.getUnitPrice(),
-                item.getLineTotal()
+                formatCurrency(item.getUnitPrice()),
+                formatCurrency(item.getLineTotal())
             });
         }
 
@@ -403,9 +403,9 @@ public class OrdersPanel extends JPanel {
     private void updatePreviewAndSubtotal() {
         MenuItem item = (MenuItem) menuCombo.getSelectedItem();
         if (item == null) {
-            unitPriceLabel.setText("Unit price: 0");
-            lineTotalLabel.setText("Line total: 0");
-            subtotalLabel.setText("Subtotal: " + currentDraft.getSubtotal());
+            unitPriceLabel.setText("Unit price: 0 VND");
+            lineTotalLabel.setText("Line total: 0 VND");
+            subtotalLabel.setText("Subtotal: " + formatCurrency(currentDraft.getSubtotal()));
             return;
         }
 
@@ -425,9 +425,9 @@ public class OrdersPanel extends JPanel {
             // Preview remains 0 until quantity becomes valid.
         }
 
-        unitPriceLabel.setText("Unit price: " + unitPrice);
-        lineTotalLabel.setText("Line total: " + lineTotal);
-        subtotalLabel.setText("Subtotal: " + currentDraft.getSubtotal());
+        unitPriceLabel.setText("Unit price: " + formatCurrency(unitPrice));
+        lineTotalLabel.setText("Line total: " + formatCurrency(lineTotal));
+        subtotalLabel.setText("Subtotal: " + formatCurrency(currentDraft.getSubtotal()));
     }
 
     private void increaseQuantity() {
@@ -602,7 +602,11 @@ public class OrdersPanel extends JPanel {
             return option.getName();
         }
         String sign = priceDelta.compareTo(BigDecimal.ZERO) > 0 ? "+" : "";
-        return option.getName() + " (" + sign + priceFormat.format(priceDelta.stripTrailingZeros()) + ")";
+        return option.getName() + " (" + sign + formatCurrency(priceDelta.abs()) + ")";
+    }
+
+    private String formatCurrency(BigDecimal amount) {
+        return priceFormat.format(amount) + " VND";
     }
 
     private List<CustomizationOption> getSelectedCustomizations() {
