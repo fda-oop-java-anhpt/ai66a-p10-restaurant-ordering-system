@@ -1,21 +1,32 @@
 package com.oop.project.ui.panels;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.event.ActionListener;
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultListModel;
+import javax.swing.AbstractButton;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -35,10 +46,15 @@ public class OrdersPanel extends JPanel {
 
     private final User currentUser;
     private final OrderService orderService = new OrderService();
+    private final DecimalFormat priceFormat = new DecimalFormat("#,##0.##");
     private OrderDraft currentDraft;
 
     private final JComboBox<MenuItem> menuCombo = new JComboBox<>();
-    private final JList<CustomizationOption> customizationList = new JList<>(new DefaultListModel<>());
+    private final JPanel customizationContainer = new JPanel();
+    private final JScrollPane customizationScroll = new JScrollPane(customizationContainer);
+    private final Map<Integer, CustomizationOption> customizationById = new LinkedHashMap<>();
+    private final Map<Integer, AbstractButton> customizationButtons = new LinkedHashMap<>();
+    private final Map<String, ButtonGroup> singleSelectGroups = new LinkedHashMap<>();
     private final JTextField quantityField = new JTextField("1");
     private final JButton decreaseQtyBtn = new JButton("-");
     private final JButton increaseQtyBtn = new JButton("+");
@@ -83,9 +99,9 @@ public class OrdersPanel extends JPanel {
         editor.add(menuCombo);
 
         editor.add(new JLabel("Customization Options"));
-        customizationList.setVisibleRowCount(8);
-        customizationList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        editor.add(new JScrollPane(customizationList));
+        customizationContainer.setLayout(new BoxLayout(customizationContainer, BoxLayout.Y_AXIS));
+        customizationScroll.setPreferredSize(new Dimension(0, 170));
+        editor.add(customizationScroll);
 
         editor.add(new JLabel("Quantity"));
         quantityField.setColumns(3);
@@ -122,13 +138,6 @@ public class OrdersPanel extends JPanel {
             loadCustomizationsForSelectedItem();
             updatePreviewAndSubtotal();
             applyEditorToSelectedRowIfPossible();
-        });
-
-        customizationList.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                updatePreviewAndSubtotal();
-                applyEditorToSelectedRowIfPossible();
-            }
         });
 
         quantityField.getDocument().addDocumentListener(new DocumentListener() {
@@ -180,16 +189,13 @@ public class OrdersPanel extends JPanel {
 
     private void loadCustomizationsForSelectedItem() {
         MenuItem selected = (MenuItem) menuCombo.getSelectedItem();
-        DefaultListModel<CustomizationOption> model = (DefaultListModel<CustomizationOption>) customizationList.getModel();
-        model.clear();
         if (selected == null) {
+            buildCustomizationControls(List.of());
             return;
         }
 
         List<CustomizationOption> options = orderService.getCustomizationOptions(selected.getId());
-        for (CustomizationOption option : options) {
-            model.addElement(option);
-        }
+        buildCustomizationControls(options);
     }
 
     private void startNewOrder() {
@@ -198,7 +204,7 @@ public class OrdersPanel extends JPanel {
         orderTable.clearSelection();
         addOrUpdateBtn.setText("Add Item");
         quantityField.setText("1");
-        customizationList.clearSelection();
+        clearCustomizationSelection();
         updatePreviewAndSubtotal();
     }
 
@@ -221,7 +227,7 @@ public class OrdersPanel extends JPanel {
             return;
         }
 
-        List<CustomizationOption> selectedCustomizations = orderService.copyOfSelected(customizationList.getSelectedValuesList());
+        List<CustomizationOption> selectedCustomizations = orderService.copyOfSelected(getSelectedCustomizations());
         int selectedRow = orderTable.getSelectedRow();
 
         if (selectedRow >= 0) {
@@ -316,7 +322,7 @@ public class OrdersPanel extends JPanel {
             return;
         }
 
-        List<CustomizationOption> selectedCustomizations = new ArrayList<>(customizationList.getSelectedValuesList());
+        List<CustomizationOption> selectedCustomizations = new ArrayList<>(getSelectedCustomizations());
         orderService.replaceItem(currentDraft, selectedRow, selectedItem, selectedCustomizations, quantity);
         refreshTable();
         orderTable.setRowSelectionInterval(selectedRow, selectedRow);
@@ -333,7 +339,7 @@ public class OrdersPanel extends JPanel {
         }
 
         BigDecimal customizationTotal = BigDecimal.ZERO;
-        for (CustomizationOption option : customizationList.getSelectedValuesList()) {
+        for (CustomizationOption option : getSelectedCustomizations()) {
             customizationTotal = customizationTotal.add(option.getPriceDelta());
         }
         BigDecimal unitPrice = item.getBasePrice().add(customizationTotal);
@@ -385,23 +391,145 @@ public class OrdersPanel extends JPanel {
     }
 
     private void selectCustomizations(List<CustomizationOption> selectedCustomizations) {
-        List<Integer> selectedIndices = new ArrayList<>();
-        DefaultListModel<CustomizationOption> model = (DefaultListModel<CustomizationOption>) customizationList.getModel();
+        clearCustomizationSelection();
 
-        for (int i = 0; i < model.getSize(); i++) {
-            CustomizationOption option = model.getElementAt(i);
-            for (CustomizationOption selected : selectedCustomizations) {
-                if (option.getId() == selected.getId()) {
-                    selectedIndices.add(i);
-                    break;
+        Set<Integer> selectedIds = new HashSet<>();
+        for (CustomizationOption selected : selectedCustomizations) {
+            selectedIds.add(selected.getId());
+        }
+
+        for (Map.Entry<Integer, AbstractButton> entry : customizationButtons.entrySet()) {
+            if (selectedIds.contains(entry.getKey())) {
+                entry.getValue().setSelected(true);
+            }
+        }
+    }
+
+    private void buildCustomizationControls(List<CustomizationOption> options) {
+        customizationContainer.removeAll();
+        customizationById.clear();
+        customizationButtons.clear();
+        singleSelectGroups.clear();
+
+        if (options.isEmpty()) {
+            JLabel emptyLabel = new JLabel("No customization available.");
+            emptyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            customizationContainer.add(emptyLabel);
+            customizationContainer.revalidate();
+            customizationContainer.repaint();
+            return;
+        }
+
+        List<CustomizationOption> sorted = new ArrayList<>(options);
+        sorted.sort(Comparator.comparingInt(option -> groupPriority(classifyGroupTitle(option.getName()))));
+
+        Map<String, List<CustomizationOption>> groupedOptions = new LinkedHashMap<>();
+        for (CustomizationOption option : sorted) {
+            String groupTitle = classifyGroupTitle(option.getName());
+            groupedOptions.computeIfAbsent(groupTitle, key -> new ArrayList<>()).add(option);
+        }
+
+        ActionListener optionSelectionListener = e -> {
+            if (applyingSelection) {
+                return;
+            }
+            updatePreviewAndSubtotal();
+            applyEditorToSelectedRowIfPossible();
+        };
+
+        for (Map.Entry<String, List<CustomizationOption>> entry : groupedOptions.entrySet()) {
+            String groupTitle = entry.getKey();
+            List<CustomizationOption> groupOptions = entry.getValue();
+
+            JPanel groupPanel = new JPanel();
+            groupPanel.setLayout(new BoxLayout(groupPanel, BoxLayout.Y_AXIS));
+            groupPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            groupPanel.setBorder(BorderFactory.createTitledBorder(groupTitle));
+
+            boolean singleSelect = isSingleSelectGroup(groupTitle);
+            ButtonGroup buttonGroup = null;
+            if (singleSelect) {
+                buttonGroup = new ButtonGroup();
+                singleSelectGroups.put(groupTitle, buttonGroup);
+            }
+
+            for (CustomizationOption option : groupOptions) {
+                AbstractButton optionButton = singleSelect
+                    ? new JRadioButton(formatOptionLabel(option))
+                    : new JCheckBox(formatOptionLabel(option));
+
+                optionButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+                optionButton.addActionListener(optionSelectionListener);
+
+                customizationById.put(option.getId(), option);
+                customizationButtons.put(option.getId(), optionButton);
+
+                if (buttonGroup != null) {
+                    buttonGroup.add(optionButton);
+                }
+
+                groupPanel.add(optionButton);
+            }
+
+            customizationContainer.add(groupPanel);
+        }
+
+        customizationContainer.revalidate();
+        customizationContainer.repaint();
+    }
+
+    private int groupPriority(String groupTitle) {
+        return switch (groupTitle) {
+            case "Add-ons" -> 0;
+            case "Removals" -> 1;
+            case "Spicy Level" -> 2;
+            default -> 3;
+        };
+    }
+
+    private String classifyGroupTitle(String optionName) {
+        String lower = optionName.toLowerCase();
+        if (lower.contains("spicy") || lower.contains("mild") || lower.contains("medium") || lower.contains("hot")) {
+            return "Spicy Level";
+        }
+        if (lower.startsWith("no ") || lower.startsWith("without ")) {
+            return "Removals";
+        }
+        return "Add-ons";
+    }
+
+    private boolean isSingleSelectGroup(String groupTitle) {
+        return "Spicy Level".equals(groupTitle);
+    }
+
+    private String formatOptionLabel(CustomizationOption option) {
+        BigDecimal priceDelta = option.getPriceDelta();
+        if (priceDelta.compareTo(BigDecimal.ZERO) == 0) {
+            return option.getName();
+        }
+        String sign = priceDelta.compareTo(BigDecimal.ZERO) > 0 ? "+" : "";
+        return option.getName() + " (" + sign + priceFormat.format(priceDelta.stripTrailingZeros()) + ")";
+    }
+
+    private List<CustomizationOption> getSelectedCustomizations() {
+        List<CustomizationOption> selected = new ArrayList<>();
+        for (Map.Entry<Integer, AbstractButton> entry : customizationButtons.entrySet()) {
+            if (entry.getValue().isSelected()) {
+                CustomizationOption option = customizationById.get(entry.getKey());
+                if (option != null) {
+                    selected.add(option);
                 }
             }
         }
+        return selected;
+    }
 
-        int[] indices = new int[selectedIndices.size()];
-        for (int i = 0; i < selectedIndices.size(); i++) {
-            indices[i] = selectedIndices.get(i);
+    private void clearCustomizationSelection() {
+        for (ButtonGroup buttonGroup : singleSelectGroups.values()) {
+            buttonGroup.clearSelection();
         }
-        customizationList.setSelectedIndices(indices);
+        for (AbstractButton button : customizationButtons.values()) {
+            button.setSelected(false);
+        }
     }
 }
