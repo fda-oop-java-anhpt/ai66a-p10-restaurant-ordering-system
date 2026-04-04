@@ -20,10 +20,12 @@ import javax.swing.BorderFactory;
 import javax.swing.AbstractButton;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -81,6 +83,7 @@ public class OrdersPanel extends JPanel {
 
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        configureMenuComboRenderer();
 
         buildEditorPanel();
         buildTablePanel();
@@ -89,6 +92,25 @@ public class OrdersPanel extends JPanel {
         loadMenuItems();
         refreshTable();
         updatePreviewAndSubtotal();
+    }
+
+    private void configureMenuComboRenderer() {
+        menuCombo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(
+                JList<?> list,
+                Object value,
+                int index,
+                boolean isSelected,
+                boolean cellHasFocus
+            ) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof MenuItem item) {
+                    setText(item.getName() + " - " + priceFormat.format(item.getBasePrice()));
+                }
+                return this;
+            }
+        });
     }
 
     private void buildEditorPanel() {
