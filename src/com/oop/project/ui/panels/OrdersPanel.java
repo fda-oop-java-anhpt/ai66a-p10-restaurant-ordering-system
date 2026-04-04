@@ -81,6 +81,7 @@ public class OrdersPanel extends JPanel {
     private final JButton newOrderBtn = new JButton("New Order");
     private final JButton addOrUpdateBtn = new JButton("Add Item");
     private final JButton removeBtn = new JButton("Remove Selected");
+    private final JButton checkoutBtn = new JButton("Checkout");
 
     private final JTable orderTable = new JTable();
     private final DefaultTableModel orderModel = new DefaultTableModel(
@@ -157,6 +158,7 @@ public class OrdersPanel extends JPanel {
         buttonBar.add(newOrderBtn);
         buttonBar.add(addOrUpdateBtn);
         buttonBar.add(removeBtn);
+        buttonBar.add(checkoutBtn);
         editor.add(buttonBar);
 
         add(editor, BorderLayout.WEST);
@@ -203,6 +205,7 @@ public class OrdersPanel extends JPanel {
         newOrderBtn.addActionListener(e -> startNewOrder());
         addOrUpdateBtn.addActionListener(e -> addOrUpdateItem());
         removeBtn.addActionListener(e -> removeSelectedItem());
+        checkoutBtn.addActionListener(e -> checkout());
         decreaseQtyBtn.addActionListener(e -> decreaseQuantity());
         increaseQtyBtn.addActionListener(e -> increaseQuantity());
 
@@ -282,7 +285,7 @@ public class OrdersPanel extends JPanel {
     private void addOrUpdateItem() {
         MenuItem selectedItem = (MenuItem) menuCombo.getSelectedItem();
         if (selectedItem == null) {
-            JOptionPane.showMessageDialog(this, "Please select a menu item.");
+            JOptionPane.showMessageDialog(this, "Please select a menu item.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -303,8 +306,10 @@ public class OrdersPanel extends JPanel {
 
         if (selectedRow >= 0) {
             orderService.replaceItem(currentDraft, selectedRow, selectedItem, selectedCustomizations, quantity);
+            JOptionPane.showMessageDialog(this, "Item updated successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
         } else {
             orderService.addItem(currentDraft, selectedItem, selectedCustomizations, quantity);
+            JOptionPane.showMessageDialog(this, "Item added successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
         }
 
         refreshTable();
@@ -314,7 +319,7 @@ public class OrdersPanel extends JPanel {
     private void removeSelectedItem() {
         int selectedRow = orderTable.getSelectedRow();
         if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Please select an item in the order table.");
+            JOptionPane.showMessageDialog(this, "Please select an item to remove.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -322,6 +327,7 @@ public class OrdersPanel extends JPanel {
         refreshTable();
         addOrUpdateBtn.setText("Add Item");
         updatePreviewAndSubtotal();
+        JOptionPane.showMessageDialog(this, "Item removed successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void refreshTable() {
@@ -629,5 +635,14 @@ public class OrdersPanel extends JPanel {
         for (AbstractButton button : customizationButtons.values()) {
             button.setSelected(false);
         }
+    }
+
+    private void checkout() {
+        if (currentDraft.getItems().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Cart is empty. Please add items before checkout.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        JOptionPane.showMessageDialog(this, "Order completed!\nSubtotal: " + formatCurrency(currentDraft.getSubtotal()), "Checkout", JOptionPane.INFORMATION_MESSAGE);
+        startNewOrder();
     }
 }
