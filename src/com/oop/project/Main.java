@@ -29,13 +29,11 @@ public class Main {
                 try {
                     connection.close();
                 } catch (Exception ignored) {
-                    // ignore close failures
                 }
             }
         }
 
         SwingUtilities.invokeLater(() -> {
-            //MainFrame frame = new MainFrame();
             new LoginFrame().setVisible(true);
         });
     }
