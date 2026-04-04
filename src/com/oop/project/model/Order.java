@@ -1,6 +1,7 @@
 package com.oop.project.model;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Order {
@@ -53,18 +54,47 @@ public class Order {
 
     public void setStaffId(int staffId) { this.staffId = staffId; }
 
-    public void setSubtotal(double subtotal) { this.subtotal = subtotal; }
+     public void setSubtotal(double subtotal) {
+        if (subtotal < 0) {
+            throw new IllegalArgumentException("subtotal must be >= 0");
+        }
+        this.subtotal = subtotal;
+    }
 
-    public void setTax(double tax) { this.tax = tax; }
+    public void setTax(double tax) {
+        if (tax < 0) {
+            throw new IllegalArgumentException("tax must be >= 0");
+        }
+        this.tax = tax;
+    }
 
-    public void setServiceFee(double serviceFee) { this.serviceFee = serviceFee; }
+    public void setServiceFee(double serviceFee) {
+        if (serviceFee < 0) {
+            throw new IllegalArgumentException("serviceFee must be >= 0");
+        }
+        this.serviceFee = serviceFee;
+    }
 
     public void setTotal(double total) { this.total = total; }
 
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public void setItems(List<OrderItem> items) { this.items = items; }
+    public void setItems(List<OrderItem> items) {
+        if (items == null) {
+            this.items = new ArrayList<>();
+        } else {
+            this.items = new ArrayList<>(items);
+        }
+    }
+    public void addItem(OrderItem item) {
+        if (item == null) return;
 
+        if (this.items == null) {
+            this.items = new ArrayList<>();
+        }
+
+        this.items.add(item);
+    }
     // toString
     @Override
     public String toString() {
