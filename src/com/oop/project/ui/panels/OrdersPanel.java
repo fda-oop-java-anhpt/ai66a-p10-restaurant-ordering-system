@@ -40,6 +40,8 @@ public class OrdersPanel extends JPanel {
     private final JComboBox<MenuItem> menuCombo = new JComboBox<>();
     private final JList<CustomizationOption> customizationList = new JList<>(new DefaultListModel<>());
     private final JTextField quantityField = new JTextField("1");
+    private final JButton decreaseQtyBtn = new JButton("-");
+    private final JButton increaseQtyBtn = new JButton("+");
 
     private final JLabel unitPriceLabel = new JLabel("Unit price: 0");
     private final JLabel lineTotalLabel = new JLabel("Line total: 0");
@@ -86,7 +88,12 @@ public class OrdersPanel extends JPanel {
         editor.add(new JScrollPane(customizationList));
 
         editor.add(new JLabel("Quantity"));
-        editor.add(quantityField);
+        quantityField.setColumns(3);
+        JPanel quantityPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        quantityPanel.add(decreaseQtyBtn);
+        quantityPanel.add(quantityField);
+        quantityPanel.add(increaseQtyBtn);
+        editor.add(quantityPanel);
 
         editor.add(unitPriceLabel);
         editor.add(lineTotalLabel);
@@ -149,6 +156,8 @@ public class OrdersPanel extends JPanel {
         newOrderBtn.addActionListener(e -> startNewOrder());
         addOrUpdateBtn.addActionListener(e -> addOrUpdateItem());
         removeBtn.addActionListener(e -> removeSelectedItem());
+        decreaseQtyBtn.addActionListener(e -> decreaseQuantity());
+        increaseQtyBtn.addActionListener(e -> increaseQuantity());
 
         orderTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -342,6 +351,27 @@ public class OrdersPanel extends JPanel {
         unitPriceLabel.setText("Unit price: " + unitPrice);
         lineTotalLabel.setText("Line total: " + lineTotal);
         subtotalLabel.setText("Subtotal: " + currentDraft.getSubtotal());
+    }
+
+    private void increaseQuantity() {
+        int qty = parseQuantityOrDefault();
+        quantityField.setText(String.valueOf(qty + 1));
+    }
+
+    private void decreaseQuantity() {
+        int qty = parseQuantityOrDefault();
+        if (qty > 1) {
+            quantityField.setText(String.valueOf(qty - 1));
+        }
+    }
+
+    private int parseQuantityOrDefault() {
+        try {
+            int qty = OrderService.parseQuantity(quantityField.getText());
+            return Math.max(1, qty);
+        } catch (IllegalArgumentException ex) {
+            return 1;
+        }
     }
 
     private void selectMenuItemById(int menuItemId) {
