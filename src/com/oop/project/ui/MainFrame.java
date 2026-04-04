@@ -33,7 +33,6 @@ public class MainFrame extends JFrame {
         setLayout(new BorderLayout());
         add(tabs, BorderLayout.CENTER);
 
-        // Defensive: if Dashboard is ever added elsewhere, remove it for non-managers.
         if (!user.isManager()) {
             for (int i = 0; i < tabs.getTabCount(); i++) {
                 if ("Dashboard".equalsIgnoreCase(tabs.getTitleAt(i))) {
