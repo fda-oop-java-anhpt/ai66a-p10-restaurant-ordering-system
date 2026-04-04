@@ -7,12 +7,27 @@ public class CustomizationOption {
     private double priceDelta;
     private int menuItemId;
 
-    // Constructor
+    // Constructor rỗng
+    public CustomizationOption() {
+    }
+
+    // Constructor chính
     public CustomizationOption(int id, String name, double priceDelta, int menuItemId) {
-        this.id = id;
-        this.name = name;
-        this.priceDelta = priceDelta;
-        this.menuItemId = menuItemId;
+        setId(id);
+        setName(name);
+        setPriceDelta(priceDelta);
+        setMenuItemId(menuItemId);
+    }
+
+    // Copy constructor
+    public CustomizationOption(CustomizationOption other) {
+        if (other == null) {
+            throw new IllegalArgumentException("Cannot copy null object");
+        }
+        this.id = other.id;
+        this.name = other.name;
+        this.priceDelta = other.priceDelta;
+        this.menuItemId = other.menuItemId;
     }
 
     // Getter
@@ -32,7 +47,11 @@ public class CustomizationOption {
         return menuItemId;
     }
 
-    // Setter (optional nếu cần sửa)
+    // Setter
+    public void setId(int id) {
+        this.id = id;
+    }
+
     public void setName(String name) {
         this.name = name;
     }
@@ -42,10 +61,12 @@ public class CustomizationOption {
     }
 
     public void setMenuItemId(int menuItemId) {
+        if (menuItemId <= 0) {
+            throw new IllegalArgumentException("menuItemId must be > 0");
+        }
         this.menuItemId = menuItemId;
     }
 
-    // toString (debug rất tiện)
     @Override
     public String toString() {
         return "CustomizationOption{" +
