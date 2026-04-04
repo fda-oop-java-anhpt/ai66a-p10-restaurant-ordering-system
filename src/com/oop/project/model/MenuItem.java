@@ -27,7 +27,6 @@ public class MenuItem {
         this.createdAt = createdAt;
     }
 
-    // getters
     public int getId() { return id; }
     public String getName() { return name; }
     public String getDescription() { return description; }
@@ -35,7 +34,6 @@ public class MenuItem {
     public int getCategoryId() { return categoryId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 
-    //setters
     public void setBasePrice(BigDecimal basePrice) {
         this.basePrice = basePrice;
     }
