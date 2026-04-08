@@ -6,7 +6,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -345,6 +344,7 @@ public class OrderRepository {
         return new Order(
             rs.getInt("id"),
             rs.getInt("staff_id"),
+            rs.getString("staff_name"),
             rs.getBigDecimal("subtotal"),
             rs.getBigDecimal("tax"),
             rs.getBigDecimal("service_fee"),
