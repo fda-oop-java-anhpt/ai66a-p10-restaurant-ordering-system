@@ -1,5 +1,5 @@
 package com.oop.project.model;
-
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,7 +8,7 @@ public class OrderItem {
     private int id;
     private int menuItemId;
     private int quantity;
-    private double unitPrice;
+    private BigDecimal unitPrice;
     private List<CustomizationOption> customizations;
 
     // Constructor rỗng
@@ -20,7 +20,7 @@ public class OrderItem {
     public OrderItem(int id,
                      int menuItemId,
                      int quantity,
-                     double unitPrice,
+                     BigDecimal unitPrice,
                      List<CustomizationOption> customizations) {
         this.id = id;
         setMenuItemId(menuItemId);
@@ -32,7 +32,7 @@ public class OrderItem {
     // Constructor tạo mới
     public OrderItem(int menuItemId,
                      int quantity,
-                     double unitPrice,
+                     BigDecimal unitPrice,
                      List<CustomizationOption> customizations) {
         setMenuItemId(menuItemId);
         setQuantity(quantity);
@@ -53,7 +53,7 @@ public class OrderItem {
         return quantity;
     }
 
-    public double getUnitPrice() {
+    public BigDecimal getUnitPrice() {
         return unitPrice;
     }
 
@@ -61,16 +61,16 @@ public class OrderItem {
         return customizations;
     }
 
-    public double getTotalPrice() {
-        double customizationTotal = 0.0;
+    public BigDecimal getTotalPrice() {
+        BigDecimal customizationTotal = BigDecimal.ZERO;
 
         for (CustomizationOption option : customizations) {
             if (option != null) {
-                customizationTotal += option.getPriceDelta();
+                customizationTotal = customizationTotal.add(option.getPriceDelta());
             }
         }
 
-        return (unitPrice + customizationTotal) * quantity;
+        return (unitPrice.add(customizationTotal)).multiply(BigDecimal.valueOf(quantity));
     }
 
     // Setter
@@ -92,9 +92,9 @@ public class OrderItem {
         this.quantity = quantity;
     }
 
-    public void setUnitPrice(double unitPrice) {
-        if (unitPrice < 0) {
-            throw new IllegalArgumentException("unitPrice must be >= 0");
+    public void setUnitPrice(BigDecimal unitPrice) {
+        if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("unitPrice must be a non-negative BigDecimal");
         }
         this.unitPrice = unitPrice;
     }

@@ -1,10 +1,10 @@
 package com.oop.project.model;
-
+import java.math.BigDecimal;
 public class CustomizationOption {
 
     private int id;
     private String name;
-    private double priceDelta;
+    private BigDecimal priceDelta;
     private int menuItemId;
 
     // Constructor rỗng
@@ -12,7 +12,7 @@ public class CustomizationOption {
     }
 
     // Constructor chính
-    public CustomizationOption(int id, String name, double priceDelta, int menuItemId) {
+    public CustomizationOption(int id, String name, BigDecimal priceDelta, int menuItemId) {
         setId(id);
         setName(name);
         setPriceDelta(priceDelta);
@@ -39,7 +39,7 @@ public class CustomizationOption {
         return name;
     }
 
-    public double getPriceDelta() {
+    public BigDecimal getPriceDelta() {
         return priceDelta;
     }
 
@@ -56,7 +56,7 @@ public class CustomizationOption {
         this.name = name;
     }
 
-    public void setPriceDelta(double priceDelta) {
+    public void setPriceDelta(BigDecimal priceDelta) {
         this.priceDelta = priceDelta;
     }
 
