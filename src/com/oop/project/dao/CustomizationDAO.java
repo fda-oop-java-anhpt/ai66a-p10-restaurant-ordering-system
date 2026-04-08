@@ -30,7 +30,7 @@ public class CustomizationDAO {
                 list.add(new CustomizationOption(
                         rs.getInt("id"),
                         rs.getString("name"),
-                        rs.getDouble("price_delta"),
+                        rs.getBigDecimal("price_delta"),
                         rs.getInt("menu_item_id")
                 ));
             }
@@ -66,7 +66,7 @@ public class CustomizationDAO {
                 list.add(new CustomizationOption(
                         rs.getInt("id"),
                         rs.getString("name"),
-                        rs.getDouble("price"),
+                        rs.getBigDecimal("price_delta"),
                         rs.getInt("menu_item_id")
                 ));
             }
@@ -104,7 +104,7 @@ public class CustomizationDAO {
                 list.add(new CustomizationOption(
                         rs.getInt("id"),
                         rs.getString("name"),
-                        rs.getDouble("price_delta"),
+                        rs.getBigDecimal("price_delta"),
                         rs.getInt("menu_item_id")
                 ));
             }
