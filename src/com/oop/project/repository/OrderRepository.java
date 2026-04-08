@@ -18,6 +18,51 @@ import com.oop.project.model.OrderItem;
 
 public class OrderRepository {
 
+    public int createOrder(int staffId,
+                           BigDecimal subtotal,
+                           BigDecimal tax,
+                           BigDecimal serviceFee,
+                           BigDecimal total) {
+        String sql = """
+            INSERT INTO orders (staff_id, subtotal, tax, service_fee, total)
+            VALUES (?, ?, ?, ?, ?)
+            RETURNING id
+        """;
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, staffId);
+            ps.setBigDecimal(2, subtotal);
+            ps.setBigDecimal(3, tax);
+            ps.setBigDecimal(4, serviceFee);
+            ps.setBigDecimal(5, total);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot create order", e);
+        }
+
+        return -1;
+    }
+
+    public void deleteOrder(int orderId) {
+        String sql = "DELETE FROM orders WHERE id = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, orderId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot delete order", e);
+        }
+    }
+
     public List<Order> findByDate(LocalDate date) {
         List<Order> orders = new ArrayList<>();
         String sql = """
