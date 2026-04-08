@@ -1,5 +1,6 @@
 package com.oop.project.dao;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,10 +15,10 @@ public class OrderDAO {
 
     // tạo Order
     public int createOrder(int staffId,
-                           double subtotal,
-                           double tax,
-                           double serviceFee,
-                           double total) {
+                           BigDecimal subtotal,
+                           BigDecimal tax,
+                           BigDecimal serviceFee,
+                           BigDecimal total) {
 
         String sql = """
             INSERT INTO orders (staff_id, subtotal, tax, service_fee, total)
@@ -30,10 +31,10 @@ public class OrderDAO {
             PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
             stmt.setInt(1, staffId);
-            stmt.setDouble(2, subtotal);
-            stmt.setDouble(3, tax);
-            stmt.setDouble(4, serviceFee);
-            stmt.setDouble(5, total);
+            stmt.setBigDecimal(2, subtotal);
+            stmt.setBigDecimal(3, tax);
+            stmt.setBigDecimal(4, serviceFee);
+            stmt.setBigDecimal(5, total);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -69,10 +70,10 @@ public class OrderDAO {
                     Order order = new Order();
                     order.setId(rs.getInt("id"));
                     order.setStaffId(rs.getInt("staff_id"));
-                    order.setSubtotal(rs.getDouble("subtotal"));
-                    order.setTax(rs.getDouble("tax"));
-                    order.setServiceFee(rs.getDouble("service_fee"));
-                    order.setTotal(rs.getDouble("total"));
+                    order.setSubtotal(rs.getBigDecimal("subtotal"));
+                    order.setTax(rs.getBigDecimal("tax"));
+                    order.setServiceFee(rs.getBigDecimal("service_fee"));
+                    order.setTotal(rs.getBigDecimal("total"));
                     order.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
 
                     list.add(order);
