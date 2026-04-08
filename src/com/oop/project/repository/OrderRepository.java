@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oop.project.db.DBConnection;
+import com.oop.project.model.MenuItem;
 import com.oop.project.model.Order;
 import com.oop.project.model.OrderItem;
 
@@ -344,23 +345,29 @@ public class OrderRepository {
         return new Order(
             rs.getInt("id"),
             rs.getInt("staff_id"),
-            rs.getString("staff_name"),
             rs.getBigDecimal("subtotal"),
             rs.getBigDecimal("tax"),
             rs.getBigDecimal("service_fee"),
             rs.getBigDecimal("total"),
-            rs.getTimestamp("created_at").toLocalDateTime()
+            rs.getTimestamp("created_at").toLocalDateTime(),
+            new ArrayList<>()
         );
     }
 
     private OrderItem mapOrderItem(ResultSet rs) throws SQLException {
-        return new OrderItem(
-            rs.getInt("id"),
-            rs.getInt("order_id"),
+        MenuItem menuItem = new MenuItem(
             rs.getInt("menu_item_id"),
             rs.getString("menu_item_name"),
-            rs.getInt("quantity"),
-            rs.getBigDecimal("unit_price")
+            "",
+            rs.getBigDecimal("unit_price"),
+            0,
+            null
+        );
+
+        return new OrderItem(
+            menuItem,
+            new ArrayList<>(),
+            rs.getInt("quantity")
         );
     }
 }
