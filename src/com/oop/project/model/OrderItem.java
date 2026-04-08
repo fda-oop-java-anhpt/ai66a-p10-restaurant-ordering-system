@@ -21,6 +21,10 @@ public class OrderItem {
         return menuItem;
     }
 
+    public String getMenuItemName() {
+        return menuItem == null ? "" : menuItem.getName();
+    }
+
     public List<CustomizationOption> getCustomizations() {
         return Collections.unmodifiableList(customizations);
     }
