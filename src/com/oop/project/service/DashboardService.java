@@ -2,7 +2,6 @@ package com.oop.project.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,7 +40,7 @@ public class DashboardService {
 
     public Order getOrderWithItems(Order order) {
         List<OrderItem> items = getOrderItems(order.getId());
-        items.forEach(order::addItem);
+        order.setItems(items);
         return order;
     }
 
