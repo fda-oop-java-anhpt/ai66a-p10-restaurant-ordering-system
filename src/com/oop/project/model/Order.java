@@ -8,6 +8,7 @@ public class Order {
 
     private int id;
     private int staffId;
+    private String staffName;
     private BigDecimal subtotal;
     private BigDecimal tax;
     private BigDecimal serviceFee;
@@ -19,8 +20,15 @@ public class Order {
     public Order(int id, int staffId, BigDecimal subtotal, BigDecimal tax,
                  BigDecimal serviceFee, BigDecimal total,
                  LocalDateTime createdAt, List<OrderItem> items) {
+        this(id, staffId, null, subtotal, tax, serviceFee, total, createdAt, items);
+    }
+
+    public Order(int id, int staffId, String staffName, BigDecimal subtotal, BigDecimal tax,
+                 BigDecimal serviceFee, BigDecimal total,
+                 LocalDateTime createdAt, List<OrderItem> items) {
         this.id = id;
         this.staffId = staffId;
+        this.staffName = staffName;
         this.subtotal = subtotal;
         this.tax = tax;
         this.serviceFee = serviceFee;
@@ -37,6 +45,8 @@ public class Order {
 
     public int getStaffId() { return staffId; }
 
+    public String getStaffName() { return staffName == null ? "" : staffName; }
+
     public BigDecimal getSubtotal() { return subtotal; }
 
     public BigDecimal getTax() { return tax; }
@@ -49,10 +59,19 @@ public class Order {
 
     public List<OrderItem> getItems() { return items; }
 
+    public int getItemCount() {
+        if (items == null || items.isEmpty()) {
+            return 0;
+        }
+        return items.stream().mapToInt(OrderItem::getQuantity).sum();
+    }
+
     // Setter
     public void setId(int id) { this.id = id; }
 
     public void setStaffId(int staffId) { this.staffId = staffId; }
+
+    public void setStaffName(String staffName) { this.staffName = staffName; }
 
      public void setSubtotal(BigDecimal subtotal) {
         if (subtotal == null || subtotal.compareTo(BigDecimal.ZERO) < 0) {
@@ -106,6 +125,7 @@ public class Order {
         return "Order{" +
                 "id=" + id +
                 ", staffId=" + staffId +
+            ", staffName='" + staffName + '\'' +
                 ", subtotal=" + subtotal +
                 ", tax=" + tax +
                 ", serviceFee=" + serviceFee +
