@@ -11,7 +11,6 @@ public class MenuCategory {
 
     }
 
-    // getters
     public int getId() {
         return id;
     }
@@ -19,8 +18,6 @@ public class MenuCategory {
     public String getName() {
         return name;
     }
-
-    // setters 
 
     public void setId(int id) {
         this.id = id;
@@ -30,14 +27,6 @@ public class MenuCategory {
         this.name = name;
     }
 
-    /**
-     * Attention
-     * JList shows value from toString()
-     * If forget, JList<MenuCategory> in repository will shows:
-     * com.oop.project.model.MenuCategory@xxxxxxx
-     * UI gets bad
-     */
-    
     @Override
     public String toString() {
         return name;
