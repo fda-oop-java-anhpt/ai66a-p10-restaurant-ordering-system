@@ -1,5 +1,11 @@
 # Compiled class file
 *.class
+*.lst
+
+# Build output directories
+bin/
+out/
+target/
 
 # Log file
 *.log
