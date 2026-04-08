@@ -12,6 +12,33 @@ import com.oop.project.model.CustomizationOption;
 
 public class CustomizationOptionRepository {
 
+    public List<CustomizationOption> findAll() {
+        List<CustomizationOption> options = new ArrayList<>();
+        String sql = """
+            SELECT id, name, price_delta, menu_item_id
+            FROM customization_options
+            ORDER BY id
+        """;
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                options.add(new CustomizationOption(
+                    rs.getInt("id"),
+                    rs.getString("name"),
+                    rs.getBigDecimal("price_delta"),
+                    rs.getInt("menu_item_id")
+                ));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot load customization options", e);
+        }
+
+        return options;
+    }
+
     public List<CustomizationOption> findByMenuItemId(int menuItemId) {
         List<CustomizationOption> options = new ArrayList<>();
         String sql = """
@@ -37,6 +64,37 @@ public class CustomizationOptionRepository {
             }
         } catch (SQLException e) {
             throw new RuntimeException("Cannot load customization options by menu item", e);
+        }
+
+        return options;
+    }
+
+    public List<CustomizationOption> findByOrderItemId(int orderItemId) {
+        List<CustomizationOption> options = new ArrayList<>();
+        String sql = """
+            SELECT c.id, c.name, c.price_delta, c.menu_item_id
+            FROM order_item_customizations oic
+            JOIN customization_options c
+              ON oic.customization_id = c.id
+            WHERE oic.order_item_id = ?
+        """;
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, orderItemId);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                options.add(new CustomizationOption(
+                    rs.getInt("id"),
+                    rs.getString("name"),
+                    rs.getBigDecimal("price_delta"),
+                    rs.getInt("menu_item_id")
+                ));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot load order item customization", e);
         }
 
         return options;
