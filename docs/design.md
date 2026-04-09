@@ -6,10 +6,36 @@ Liệt kê các class chính trong hệ thống và mô tả ngắn gọn vai tr
 
 | Class | Package | Role |
 |------|--------|--------|
-|Users  |model |Represents user-related information and is used to store and tranfer user information between application layers. |
-|AuthService|service |Handles business logic related to user authentication, including verifying login credentials and coordinating data access. |
-|LoginDAO |dao |Perform queries against the database to verify user login credentials, such as user ID, and retrieve user roles. |
-|UserDAO|dao |Accessing and managing user information in the database includes adding users, reading, updating, and deleting user information,... . |
+| Main | com.oop.project | Entry point của ứng dụng, khởi tạo và hiển thị `LoginFrame`. |
+| DBConnection | com.oop.project.db | Cung cấp cấu hình DB (URL/user/password) và tạo kết nối JDBC dùng chung. |
+| UnauthorizedException | com.oop.project.exception | Ngoại lệ runtime cho các thao tác không đủ quyền (authorization). |
+| CustomizationOption | com.oop.project.model | Mô hình tùy chọn thêm cho món ăn (name, priceDelta, menuItemId). |
+| MenuCategory | com.oop.project.model | Mô hình danh mục món ăn. |
+| MenuItem | com.oop.project.model | Mô hình món ăn trong menu (thông tin cơ bản, giá, danh mục). |
+| Order | com.oop.project.model | Mô hình đơn hàng hoàn chỉnh: tổng tiền, thuế/phí, danh sách item, metadata đơn. |
+| OrderDraft | com.oop.project.model | Mô hình đơn hàng đang thao tác trên UI trước khi checkout. |
+| OrderItem | com.oop.project.model | Mô hình 1 dòng món trong đơn, gồm món, tùy chọn, số lượng, tính line total. |
+| OrderItemCustomization | com.oop.project.model | Mô hình liên kết tùy chọn với dòng món trong đơn hàng. |
+| Role | com.oop.project.model | Enum vai trò người dùng (quản lý/nhân viên), parse và kiểm tra quyền cơ bản. |
+| User | com.oop.project.model | Mô hình người dùng đăng nhập (id, username, role) và tiện ích kiểm tra quyền. |
+| AuditLogRepository | com.oop.project.repository | Ghi log audit cho các hành động quản trị (ví dụ đổi giá món). |
+| CustomizationOptionRepository | com.oop.project.repository | Truy vấn dữ liệu customization option theo món và theo order item. |
+| LoginLogRepository | com.oop.project.repository | Ghi log các sự kiện đăng nhập/đăng xuất của người dùng. |
+| MenuCategoryRepository | com.oop.project.repository | Truy vấn danh sách danh mục món ăn từ DB. |
+| MenuItemRepository | com.oop.project.repository | Truy vấn/thêm/cập nhật dữ liệu món ăn (findAll, theo category, theo id, update price). |
+| OrderRepository | com.oop.project.repository | Truy vấn và phân tích đơn hàng: lọc, chi tiết item, doanh thu, best-seller, thống kê. |
+| UserRepository | com.oop.project.repository | Xác thực người dùng (login) và ánh xạ dữ liệu user từ DB sang model. |
+| AuthService | com.oop.project.service | Nghiệp vụ đăng nhập/đăng xuất: gọi `UserRepository`, ghi `LoginLogRepository`. |
+| DashboardService | com.oop.project.service | Nghiệp vụ dashboard: tổng hợp analytics, tìm kiếm/lọc/sắp xếp đơn hàng. |
+| MenuService | com.oop.project.service | Nghiệp vụ menu cho người dùng thường: lấy category, lấy món theo category, thêm món. |
+| MenuAdminService | com.oop.project.service | Mở rộng `MenuService` cho quản trị: cập nhật giá và kiểm tra quyền manager. |
+| OrderService | com.oop.project.service | Nghiệp vụ tạo/chỉnh sửa đơn nháp, validate số lượng, lấy menu và customization. |
+| LoginFrame | com.oop.project.ui | Cửa sổ đăng nhập (Swing), nhận credential và điều hướng sang `MainFrame` khi thành công. |
+| MainFrame | com.oop.project.ui | Cửa sổ chính sau login, điều phối các tab chức năng Menu/Cart/Orders/Dashboard. |
+| CartPanel | com.oop.project.ui.panels | Panel giỏ hàng (comming soon). |
+| DashboardPanel | com.oop.project.ui.panels | Panel dashboard hiển thị KPI, bảng đơn hàng, bộ lọc, best-selling items/categories. |
+| MenuPanel | com.oop.project.ui.panels | Panel quản lý menu trên UI: danh mục, danh sách món, thêm món, sửa giá theo quyền. |
+| OrdersPanel | com.oop.project.ui.panels | Panel thao tác order: chọn món/tùy chọn/số lượng, cập nhật draft, checkout. |
 
 ---
 
