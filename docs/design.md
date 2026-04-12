@@ -108,10 +108,16 @@ Liệt kê các design pattern (nếu có) và giải thích ngắn gọn cách 
 
 | Design Pattern | Áp dụng ở đâu | Mục đích |
 |---------------|-------------|---------|
-| | | |
-| | | |
+| Repository Pattern | Các lớp `UserRepository`, `OrderRepository`, `MenuItemRepository`, `MenuCategoryRepository`, `CustomizationOptionRepository`, `LoginLogRepository`, `AuditLogRepository` | Tách logic truy cập dữ liệu (SQL/JDBC) khỏi business logic; giúp service/UI không phụ thuộc trực tiếp vào câu lệnh SQL. |
+| Service Layer Pattern | Các lớp `AuthService`, `MenuService`, `MenuAdminService`, `OrderService`, `DashboardService` | Gom nghiệp vụ theo use-case, điều phối giữa UI và repository; giữ cho UI mỏng, dễ bảo trì. |
+| MVC-like Separation (Model-Service/UI) | `model/*` (dữ liệu), `service/*` (nghiệp vụ), `ui/*` + `ui/panels/*` (giao diện) | Phân tách trách nhiệm theo tầng, giảm coupling giữa giao diện và dữ liệu, thuận tiện mở rộng tính năng. |
+| Observer/Event Listener Pattern (qua Swing) | `OrdersPanel`, `DashboardPanel`, `LoginFrame` dùng `DocumentListener`, `ActionListener`, `ListSelectionListener`, `FocusAdapter` | Xử lý sự kiện UI theo cơ chế publish/subscribe của Swing; component phản ứng khi trạng thái người dùng thay đổi. |
+| Data Mapper (mức đơn giản) | Các hàm map `ResultSet -> Model` như `MenuItemRepository.map(...)`, logic mapping trong `OrderRepository`, `UserRepository` | Chuyển đổi dữ liệu DB sang object domain, tránh để tầng trên thao tác trực tiếp `ResultSet`. |
 
 > Nếu không sử dụng design pattern nào, hãy giải thích lý do.
+
+**Nhận xét:**
+> Tổng thể project được tổ chức khá rõ ràng giữa giao diện, nghiệp vụ và truy xuất dữ liệu, nhờ đó mã nguồn dễ đọc và thuận lợi hơn khi mở rộng. Các pattern được áp dụng chủ yếu là những pattern phù hợp với phạm vi đồ án như Repository và Service Layer, giúp các phần của hệ thống tách biệt và hạn chế phụ thuộc chéo. Tuy nhiên, hệ thống hiện tại vẫn còn ở mức đơn giản, chưa khai thác thêm các pattern nâng cao như Factory hay Strategy; nếu tiếp tục phát triển về sau, phần thiết kế có thể được hoàn thiện hơn để tăng tính linh hoạt.
 
 ---
 
