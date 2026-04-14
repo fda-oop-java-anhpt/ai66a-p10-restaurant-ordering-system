@@ -18,6 +18,8 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 
 import com.oop.project.model.MenuCategory;
@@ -36,6 +38,10 @@ public class MenuPanel extends JPanel {
     private final JTable itemTable = new JTable();
     private final JButton addFoodBtn = new JButton("Add");
     private final JButton editPriceBtn = new JButton("Edit Price");
+    private final JTextField searchField = new JTextField();
+    
+    private int currentCategoryId = -1;
+    private List<MenuItem> allMenuItems;
 
     public MenuPanel(User user) {
         this.currentUser = user;
@@ -46,9 +52,10 @@ public class MenuPanel extends JPanel {
 
         initCategoryList();
         initItemTable();
+        setupSearch();
 
         add(new JScrollPane(categoryList), BorderLayout.WEST);
-        add(new JScrollPane(itemTable), BorderLayout.CENTER);
+        add(buildCenterPanel(), BorderLayout.CENTER);
         add(buildActionPanel(), BorderLayout.SOUTH);
 
         loadCategories();
@@ -73,6 +80,29 @@ public class MenuPanel extends JPanel {
         ));
     }
 
+    private void setupSearch() {
+        searchField.setColumns(20);
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { applyFilter(); }
+            public void removeUpdate(DocumentEvent e) { applyFilter(); }
+            public void changedUpdate(DocumentEvent e) { applyFilter(); }
+        });
+    }
+
+    private JPanel buildCenterPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.add(buildSearchPanel(), BorderLayout.NORTH);
+        panel.add(new JScrollPane(itemTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildSearchPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panel.add(new JLabel("Search:"));
+        panel.add(searchField);
+        return panel;
+    }
+
     private JPanel buildActionPanel() {
         addFoodBtn.addActionListener(e -> showAddFoodDialog());
         editPriceBtn.addActionListener(e -> editSelectedPrice());
@@ -82,6 +112,26 @@ public class MenuPanel extends JPanel {
         panel.add(addFoodBtn);
         panel.add(editPriceBtn);
         return panel;
+    }
+
+    private void applyFilter() {
+        if (allMenuItems == null) return;
+        
+        String keyword = searchField.getText().toLowerCase().trim();
+        DefaultTableModel model = (DefaultTableModel) itemTable.getModel();
+        model.setRowCount(0);
+        
+        for (MenuItem item : allMenuItems) {
+            if (item.getName().toLowerCase().contains(keyword) 
+                || item.getDescription().toLowerCase().contains(keyword)) {
+                model.addRow(new Object[] {
+                    item.getId(),
+                    item.getName(),
+                    item.getDescription(),
+                    item.getBasePrice()
+                });
+            }
+        }
     }
 
     private void showAddFoodDialog() {
@@ -212,18 +262,10 @@ public class MenuPanel extends JPanel {
     }
 
     private void loadMenuItems(int categoryId) {
-        List<MenuItem> items = menuService.getMenuItemsByCategory(categoryId);
-        DefaultTableModel model = (DefaultTableModel) itemTable.getModel();
-        model.setRowCount(0);
-
-        for (MenuItem item: items) {
-            model.addRow(new Object[] {
-                item.getId(),
-                item.getName(),
-                item.getDescription(),
-                item.getBasePrice()
-            });
-        }
+        currentCategoryId = categoryId;
+        allMenuItems = menuService.getMenuItemsByCategory(categoryId);
+        searchField.setText("");
+        applyFilter();
     }
 
     private void selectCategory(int categoryId) {
