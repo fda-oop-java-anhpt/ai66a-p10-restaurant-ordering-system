@@ -101,10 +101,13 @@ CREATE TABLE order_items (
 -- =====================
 CREATE TABLE order_item_customizations (
   id SERIAL PRIMARY KEY,
-  order_item_id INTEGER NOT NULL,
+  order_id INTEGER NOT NULL,
+  menu_item_id INTEGER NOT NULL,
   customization_id INTEGER NOT NULL,
-  CONSTRAINT fk_oic_orderitem
-    FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE,
+  CONSTRAINT fk_oic_order
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_oic_menuitem
+    FOREIGN KEY (menu_item_id) REFERENCES menu_items(id),
   CONSTRAINT fk_oic_customopt
     FOREIGN KEY (customization_id) REFERENCES customization_options(id)
 );
