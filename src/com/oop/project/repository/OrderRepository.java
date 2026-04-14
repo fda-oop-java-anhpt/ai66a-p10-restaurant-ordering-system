@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -77,14 +78,15 @@ public class OrderRepository {
                 o.created_at
             FROM orders o
             JOIN users u ON o.staff_id = u.id
-            WHERE DATE(o.created_at) = ?
+            WHERE o.created_at >= ? AND o.created_at < ?
             ORDER BY o.created_at DESC
         """;
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, date.toString());
+            ps.setTimestamp(1, Timestamp.valueOf(date.atStartOfDay()));
+            ps.setTimestamp(2, Timestamp.valueOf(date.plusDays(1).atStartOfDay()));
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
@@ -263,13 +265,14 @@ public class OrderRepository {
         String sql = """
             SELECT COALESCE(SUM(total), 0) AS total_revenue
             FROM orders
-            WHERE DATE(created_at) = ?
+            WHERE created_at >= ? AND created_at < ?
         """;
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, date.toString());
+            ps.setTimestamp(1, Timestamp.valueOf(date.atStartOfDay()));
+            ps.setTimestamp(2, Timestamp.valueOf(date.plusDays(1).atStartOfDay()));
             ResultSet rs = ps.executeQuery();
 
             if (rs.next()) {
@@ -285,13 +288,14 @@ public class OrderRepository {
         String sql = """
             SELECT COUNT(*) AS order_count
             FROM orders
-            WHERE DATE(created_at) = ?
+            WHERE created_at >= ? AND created_at < ?
         """;
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, date.toString());
+            ps.setTimestamp(1, Timestamp.valueOf(date.atStartOfDay()));
+            ps.setTimestamp(2, Timestamp.valueOf(date.plusDays(1).atStartOfDay()));
             ResultSet rs = ps.executeQuery();
 
             if (rs.next()) {
@@ -334,7 +338,7 @@ public class OrderRepository {
             FROM menu_items m
             LEFT JOIN order_items oi ON m.id = oi.menu_item_id
             LEFT JOIN orders o ON oi.order_id = o.id
-            WHERE DATE(o.created_at) = ? OR o.created_at IS NULL
+            WHERE (o.created_at >= ? AND o.created_at < ?) OR o.created_at IS NULL
             GROUP BY m.id, m.name
             ORDER BY total_qty DESC
             LIMIT 10
@@ -343,7 +347,8 @@ public class OrderRepository {
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, date.toString());
+            ps.setTimestamp(1, Timestamp.valueOf(date.atStartOfDay()));
+            ps.setTimestamp(2, Timestamp.valueOf(date.plusDays(1).atStartOfDay()));
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
@@ -365,7 +370,7 @@ public class OrderRepository {
             LEFT JOIN menu_items m ON mc.id = m.category_id
             LEFT JOIN order_items oi ON m.id = oi.menu_item_id
             LEFT JOIN orders o ON oi.order_id = o.id
-            WHERE DATE(o.created_at) = ? OR o.created_at IS NULL
+            WHERE (o.created_at >= ? AND o.created_at < ?) OR o.created_at IS NULL
             GROUP BY mc.id, mc.name
             ORDER BY category_revenue DESC
         """;
@@ -373,7 +378,8 @@ public class OrderRepository {
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, date.toString());
+            ps.setTimestamp(1, Timestamp.valueOf(date.atStartOfDay()));
+            ps.setTimestamp(2, Timestamp.valueOf(date.plusDays(1).atStartOfDay()));
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
