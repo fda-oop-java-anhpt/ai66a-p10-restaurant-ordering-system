@@ -191,7 +191,8 @@ public class CartPanel extends JPanel {
             currentUser.getId(),
             currentUser.getUsername(),
             orderService,
-            orderRepository
+            orderRepository,
+            onUpdate
         );
         dialog.setVisible(true);
 

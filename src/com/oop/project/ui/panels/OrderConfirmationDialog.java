@@ -29,11 +29,15 @@ public class OrderConfirmationDialog extends JDialog {
     private final String staffName;
     private final OrderService orderService;
     private final OrderRepository orderRepository;
+    private final Runnable onSubmitted;
     private final ReceiptPrinter receiptPrinter = new ReceiptPrinter();
     private final DecimalFormat priceFormat = new DecimalFormat("#,##0");
     
     private int submittedOrderId = -1;
     private boolean submitted = false;
+    private JButton submitBtn;
+    private JButton printBtn;
+    private JButton closeBtn;
 
     public OrderConfirmationDialog(
         JFrame parent,
@@ -41,7 +45,8 @@ public class OrderConfirmationDialog extends JDialog {
         int staffId,
         String staffName,
         OrderService orderService,
-        OrderRepository orderRepository
+        OrderRepository orderRepository,
+        Runnable onSubmitted
     ) {
         super(parent, "Order Confirmation", true);
         this.orderDraft = draft;
@@ -49,6 +54,7 @@ public class OrderConfirmationDialog extends JDialog {
         this.staffName = staffName;
         this.orderService = orderService;
         this.orderRepository = orderRepository;
+        this.onSubmitted = onSubmitted;
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(600, 500);
@@ -124,17 +130,19 @@ public class OrderConfirmationDialog extends JDialog {
     private JPanel buildActionButtons() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 
-        JButton submitBtn = new JButton("Submit Order");
-        JButton printBtn = new JButton("Print Receipt");
-        JButton cancelBtn = new JButton("Cancel");
+        submitBtn = new JButton("Submit Order");
+        printBtn = new JButton("Print Receipt");
+        closeBtn = new JButton("Close");
+
+        printBtn.setEnabled(false);
 
         submitBtn.addActionListener(e -> submitOrder());
         printBtn.addActionListener(e -> printReceipt());
-        cancelBtn.addActionListener(e -> dispose());
+        closeBtn.addActionListener(e -> closeDialog());
 
         panel.add(submitBtn);
         panel.add(printBtn);
-        panel.add(cancelBtn);
+        panel.add(closeBtn);
 
         return panel;
     }
@@ -162,7 +170,10 @@ public class OrderConfirmationDialog extends JDialog {
                 "Success",
                 JOptionPane.INFORMATION_MESSAGE
             );
-            dispose();
+
+            submitBtn.setEnabled(false);
+            printBtn.setEnabled(true);
+            closeBtn.setText("Done");
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(
                 this,
@@ -171,6 +182,13 @@ public class OrderConfirmationDialog extends JDialog {
                 JOptionPane.ERROR_MESSAGE
             );
         }
+    }
+
+    private void closeDialog() {
+        if (submitted && onSubmitted != null) {
+            onSubmitted.run();
+        }
+        dispose();
     }
 
     private void printReceipt() {
