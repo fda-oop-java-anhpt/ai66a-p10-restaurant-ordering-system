@@ -7,6 +7,8 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import com.oop.project.model.OrderDraft;
 import com.oop.project.model.User;
@@ -26,6 +28,7 @@ public class MainFrame extends JFrame {
     private OrderDraft sharedOrderDraft;
     private OrdersPanel ordersPanel;
     private CartPanel cartPanel;
+    private DashboardPanel dashboardPanel;
 
     public MainFrame(User user) {
         this.currentUser = user;
@@ -38,13 +41,25 @@ public class MainFrame extends JFrame {
 
         ordersPanel = new OrdersPanel(currentUser, sharedOrderDraft, this::refreshCart);
         cartPanel = new CartPanel(currentUser, sharedOrderDraft, this::onCartUpdated);
+        if (currentUser.isManager()) {
+            dashboardPanel = new DashboardPanel();
+        }
 
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Menu", new MenuPanel(currentUser));
         tabs.addTab("Cart", cartPanel);
         tabs.addTab("Orders", ordersPanel);
         if (currentUser.isManager()) {
-            tabs.addTab("Dashboard", new DashboardPanel());
+            tabs.addTab("Dashboard", dashboardPanel);
+            tabs.addChangeListener(new ChangeListener() {
+                @Override
+                public void stateChanged(ChangeEvent e) {
+                    int selectedIndex = tabs.getSelectedIndex();
+                    if (selectedIndex >= 0 && "Dashboard".equalsIgnoreCase(tabs.getTitleAt(selectedIndex))) {
+                        dashboardPanel.refreshDashboardData();
+                    }
+                }
+            });
         }
         setLayout(new BorderLayout());
         add(tabs, BorderLayout.CENTER);
@@ -74,6 +89,9 @@ public class MainFrame extends JFrame {
 
     private void onCartUpdated() {
         ordersPanel.refresh();
+        if (dashboardPanel != null) {
+            dashboardPanel.refreshDashboardData();
+        }
     }
 
     private void handleLogout() {

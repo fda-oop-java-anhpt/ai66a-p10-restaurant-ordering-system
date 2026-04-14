@@ -5,6 +5,7 @@ import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import com.oop.project.service.DashboardService;
 
 public class DashboardPanel extends JPanel {
     private DashboardService dashboardService;
+    private final DecimalFormat priceFormat = new DecimalFormat("#,##0");
     
     // Analytics components
     private JLabel totalRevenueLabel;
@@ -36,6 +38,7 @@ public class DashboardPanel extends JPanel {
     // Best sellers components
     private JLabel topItemsLabel;
     private JLabel topCategoriesLabel;
+    private JLabel lastUpdatedLabel;
     
     private List<Order> currentOrders;
     
@@ -45,6 +48,10 @@ public class DashboardPanel extends JPanel {
         this.currentOrders = new ArrayList<>();
         
         initializeComponents();
+        loadDashboardData();
+    }
+
+    public void refreshDashboardData() {
         loadDashboardData();
     }
     
@@ -72,18 +79,20 @@ public class DashboardPanel extends JPanel {
     }
     
     private JPanel createAnalyticsPanel() {
-        JPanel analyticsPanel = new JPanel();
-        analyticsPanel.setLayout(new GridLayout(1, 3, 10, 0));
-        analyticsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Daily Analytics"));
+        JPanel analyticsPanel = new JPanel(new BorderLayout(0, 8));
+
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new GridLayout(1, 3, 10, 0));
+        contentPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Daily Analytics"));
         
         // Total Revenue
         JPanel revenuePanel = new JPanel(new BorderLayout());
         revenuePanel.setBorder(javax.swing.BorderFactory.createLineBorder(java.awt.Color.BLACK));
         revenuePanel.add(new JLabel("Total Revenue"), BorderLayout.NORTH);
-        totalRevenueLabel = new JLabel("$0");
+        totalRevenueLabel = new JLabel(formatCurrency(BigDecimal.ZERO));
         totalRevenueLabel.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 20));
         revenuePanel.add(totalRevenueLabel, BorderLayout.CENTER);
-        analyticsPanel.add(revenuePanel);
+        contentPanel.add(revenuePanel);
         
         // Orders Count
         JPanel ordersPanel = new JPanel(new BorderLayout());
@@ -92,16 +101,21 @@ public class DashboardPanel extends JPanel {
         ordersCountLabel = new JLabel("0");
         ordersCountLabel.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 20));
         ordersPanel.add(ordersCountLabel, BorderLayout.CENTER);
-        analyticsPanel.add(ordersPanel);
+        contentPanel.add(ordersPanel);
         
         // Average Order Value
         JPanel avgPanel = new JPanel(new BorderLayout());
         avgPanel.setBorder(javax.swing.BorderFactory.createLineBorder(java.awt.Color.BLACK));
         avgPanel.add(new JLabel("Avg Order Value"), BorderLayout.NORTH);
-        avgOrderValueLabel = new JLabel("$0");
+        avgOrderValueLabel = new JLabel(formatCurrency(BigDecimal.ZERO));
         avgOrderValueLabel.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 20));
         avgPanel.add(avgOrderValueLabel, BorderLayout.CENTER);
-        analyticsPanel.add(avgPanel);
+        contentPanel.add(avgPanel);
+
+        lastUpdatedLabel = new JLabel("Last updated: -");
+        analyticsPanel.add(contentPanel, BorderLayout.CENTER);
+        analyticsPanel.add(lastUpdatedLabel, BorderLayout.SOUTH);
+        analyticsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Daily Analytics"));
         
         return analyticsPanel;
     }
@@ -124,7 +138,7 @@ public class DashboardPanel extends JPanel {
         filtersPanel.add(javax.swing.Box.createVerticalStrut(10));
         
         // Min Price filter
-        JLabel minLabel = new JLabel("Min Price ($):");
+        JLabel minLabel = new JLabel("Min Price (VND):");
         filtersPanel.add(minLabel);
         minPriceField = new JTextField("0");
         filtersPanel.add(minPriceField);
@@ -132,7 +146,7 @@ public class DashboardPanel extends JPanel {
         filtersPanel.add(javax.swing.Box.createVerticalStrut(2));
         
         // Max Price filter
-        JLabel maxLabel = new JLabel("Max Price ($):");
+        JLabel maxLabel = new JLabel("Max Price (VND):");
         filtersPanel.add(maxLabel);
         maxPriceField = new JTextField("999999");
         filtersPanel.add(maxPriceField);
@@ -219,9 +233,9 @@ public class DashboardPanel extends JPanel {
         
         // Load daily analytics
         Map<String, Object> analytics = dashboardService.getDailyAnalytics(today);
-        totalRevenueLabel.setText("$" + analytics.get("totalRevenue"));
+        totalRevenueLabel.setText(formatCurrency((BigDecimal) analytics.get("totalRevenue")));
         ordersCountLabel.setText(String.valueOf(analytics.get("orderCount")));
-        avgOrderValueLabel.setText("$" + analytics.get("averageOrderValue"));
+        avgOrderValueLabel.setText(formatCurrency((BigDecimal) analytics.get("averageOrderValue")));
         
         // Load orders
         currentOrders = dashboardService.getTodaysOrders();
@@ -233,6 +247,9 @@ public class DashboardPanel extends JPanel {
         
         topItemsLabel.setText(formatBestSellers(topItems));
         topCategoriesLabel.setText(formatBestSellerCategories(topCategories));
+        if (lastUpdatedLabel != null) {
+            lastUpdatedLabel.setText("Last updated: " + java.time.LocalDateTime.now().withNano(0));
+        }
     }
     
     private void applyFilters(int sortByIndex) {
@@ -280,7 +297,7 @@ public class DashboardPanel extends JPanel {
                 orderWithItems.getId(),
                 orderWithItems.getCreatedAt(),
                 orderWithItems.getStaffName(),
-                "$" + orderWithItems.getTotal(),
+                formatCurrency(orderWithItems.getTotal()),
                 orderWithItems.getItemCount()
             };
             tableModel.addRow(row);
@@ -305,9 +322,13 @@ public class DashboardPanel extends JPanel {
         }
         StringBuilder sb = new StringBuilder("<html>");
         categories.entrySet().stream().limit(5).forEach(e -> 
-            sb.append(e.getKey()).append(": $").append(e.getValue()).append("<br>")
+            sb.append(e.getKey()).append(": ").append(formatCurrency(e.getValue())).append("<br>")
         );
         sb.append("</html>");
         return sb.toString();
+    }
+
+    private String formatCurrency(BigDecimal amount) {
+        return priceFormat.format(amount) + " VND";
     }
 }
