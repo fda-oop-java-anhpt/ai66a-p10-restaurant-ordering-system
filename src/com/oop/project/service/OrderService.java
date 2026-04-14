@@ -1,5 +1,6 @@
 package com.oop.project.service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,5 +58,19 @@ public class OrderService {
 
     public List<CustomizationOption> copyOfSelected(List<CustomizationOption> selected) {
         return new ArrayList<>(selected);
+    }
+
+    public BigDecimal calculateTax(BigDecimal subtotal) {
+        return subtotal.multiply(new BigDecimal("0.10"));
+    }
+
+    public BigDecimal calculateServiceFee(BigDecimal subtotal) {
+        return subtotal.multiply(new BigDecimal("0.05"));
+    }
+
+    public BigDecimal calculateTotal(BigDecimal subtotal) {
+        BigDecimal tax = calculateTax(subtotal);
+        BigDecimal fee = calculateServiceFee(subtotal);
+        return subtotal.add(tax).add(fee);
     }
 }
