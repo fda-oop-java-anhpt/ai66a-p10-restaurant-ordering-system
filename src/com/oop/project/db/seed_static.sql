@@ -56,32 +56,100 @@ INSERT INTO customization_options (id, name, price_delta, menu_item_id) VALUES
 ON CONFLICT DO NOTHING;
 
 -- =====================================================
--- 6. ORDERS
+-- 6. ORDERS (Dynamic lookup using staff usernames)
 -- =====================================================
-INSERT INTO orders (id, staff_id, subtotal, tax, service_fee, total) VALUES
-(1, 2, 80000,  8000,  2000,  90000),
-(2, 3, 45000,  4500,  1500,  51000)
-ON CONFLICT DO NOTHING;
+INSERT INTO orders (staff_id, subtotal, tax, service_fee, total)
+SELECT 
+  u.id AS staff_id,
+  80000 AS subtotal,
+  8000 AS tax,
+  2000 AS service_fee,
+  90000 AS total
+FROM users u
+WHERE u.username = 'staff1'
+  AND NOT EXISTS (SELECT 1 FROM orders WHERE staff_id = u.id AND total = 90000)
+UNION ALL
+SELECT 
+  u.id AS staff_id,
+  45000 AS subtotal,
+  4500 AS tax,
+  1500 AS service_fee,
+  51000 AS total
+FROM users u
+WHERE u.username = 'staff2'
+  AND NOT EXISTS (SELECT 1 FROM orders WHERE staff_id = u.id AND total = 51000);
 
 -- =====================================================
--- 7. ORDER ITEMS
+-- 7. ORDER ITEMS (Dynamic lookup by menu item names)
 -- =====================================================
-INSERT INTO order_items (id, order_id, menu_item_id, quantity, unit_price) VALUES
--- Order 1
-(1, 1, 3, 1, 50000),  -- Beef Burger
-(2, 1, 1, 2, 15000),  -- Coca Cola x2
+-- Order 1: Beef Burger (from staff1)
+INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price)
+SELECT 
+  (SELECT MIN(o.id) FROM orders o JOIN users u ON o.staff_id = u.id WHERE u.username = 'staff1'),
+  (SELECT id FROM menu_items WHERE name = 'Beef Burger' LIMIT 1),
+  1 AS quantity,
+  (SELECT base_price FROM menu_items WHERE name = 'Beef Burger' LIMIT 1)
+WHERE NOT EXISTS (
+  SELECT 1 FROM order_items oi
+  JOIN orders o ON oi.order_id = o.id
+  JOIN users u ON o.staff_id = u.id
+  WHERE u.username = 'staff1' AND oi.menu_item_id = (SELECT id FROM menu_items WHERE name = 'Beef Burger' LIMIT 1)
+);
 
--- Order 2
-(3, 2, 4, 1, 45000)   -- Fried Chicken
-ON CONFLICT DO NOTHING;
+-- Order 1: Coca Cola x2 (from staff1)
+INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price)
+SELECT 
+  (SELECT MIN(o.id) FROM orders o JOIN users u ON o.staff_id = u.id WHERE u.username = 'staff1'),
+  (SELECT id FROM menu_items WHERE name = 'Coca Cola' LIMIT 1),
+  2 AS quantity,
+  (SELECT base_price FROM menu_items WHERE name = 'Coca Cola' LIMIT 1)
+WHERE NOT EXISTS (
+  SELECT 1 FROM order_items oi
+  JOIN orders o ON oi.order_id = o.id
+  JOIN users u ON o.staff_id = u.id
+  WHERE u.username = 'staff1' AND oi.menu_item_id = (SELECT id FROM menu_items WHERE name = 'Coca Cola' LIMIT 1) AND oi.quantity = 2
+);
+
+-- Order 2: Fried Chicken (from staff2)
+INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price)
+SELECT 
+  (SELECT MIN(o.id) FROM orders o JOIN users u ON o.staff_id = u.id WHERE u.username = 'staff2'),
+  (SELECT id FROM menu_items WHERE name = 'Fried Chicken' LIMIT 1),
+  1 AS quantity,
+  (SELECT base_price FROM menu_items WHERE name = 'Fried Chicken' LIMIT 1)
+WHERE NOT EXISTS (
+  SELECT 1 FROM order_items oi
+  JOIN orders o ON oi.order_id = o.id
+  JOIN users u ON o.staff_id = u.id
+  WHERE u.username = 'staff2' AND oi.menu_item_id = (SELECT id FROM menu_items WHERE name = 'Fried Chicken' LIMIT 1)
+);
 
 -- =====================================================
--- 8. ORDER ITEM CUSTOMIZATIONS
+-- 8. ORDER ITEM CUSTOMIZATIONS (Dynamic lookup by item/customization names)
 -- =====================================================
-INSERT INTO order_item_customizations (id, order_item_id, customization_id) VALUES
-(1, 1, 1),  -- Beef Burger + Extra Cheese
-(2, 2, 6)   -- Coca Cola + Large Cup
-ON CONFLICT DO NOTHING;
+-- Beef Burger + Extra Cheese (from staff1's order)
+INSERT INTO order_item_customizations (order_id, menu_item_id, customization_id)
+SELECT 
+  (SELECT MIN(o.id) FROM orders o JOIN users u ON o.staff_id = u.id WHERE u.username = 'staff1'),
+  (SELECT id FROM menu_items WHERE name = 'Beef Burger' LIMIT 1),
+  (SELECT id FROM customization_options WHERE name = 'Extra Cheese' LIMIT 1)
+WHERE NOT EXISTS (
+  SELECT 1 FROM order_item_customizations oic
+  WHERE oic.menu_item_id = (SELECT id FROM menu_items WHERE name = 'Beef Burger' LIMIT 1)
+    AND oic.customization_id = (SELECT id FROM customization_options WHERE name = 'Extra Cheese' LIMIT 1)
+);
+
+-- Coca Cola + Large Cup (from staff1's order)
+INSERT INTO order_item_customizations (order_id, menu_item_id, customization_id)
+SELECT 
+  (SELECT MIN(o.id) FROM orders o JOIN users u ON o.staff_id = u.id WHERE u.username = 'staff1'),
+  (SELECT id FROM menu_items WHERE name = 'Coca Cola' LIMIT 1),
+  (SELECT id FROM customization_options WHERE name = 'Large Cup' LIMIT 1)
+WHERE NOT EXISTS (
+  SELECT 1 FROM order_item_customizations oic
+  WHERE oic.menu_item_id = (SELECT id FROM menu_items WHERE name = 'Coca Cola' LIMIT 1)
+    AND oic.customization_id = (SELECT id FROM customization_options WHERE name = 'Large Cup' LIMIT 1)
+);
 
 -- =====================================================
 -- 9. LOGIN LOGS
