@@ -415,4 +415,91 @@ public class OrderRepository {
             rs.getInt("quantity")
         );
     }
+
+    public int submitOrder(com.oop.project.model.OrderDraft draft, int staffId, BigDecimal subtotal, BigDecimal tax, BigDecimal serviceFee, BigDecimal total) {
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            int orderId = createOrderHeader(conn, staffId, subtotal, tax, serviceFee, total);
+
+            for (OrderItem item : draft.getItems()) {
+                addOrderItem(conn, orderId, item.getMenuItem().getId(), item.getQuantity(), item.getUnitPrice());
+                for (com.oop.project.model.CustomizationOption customization : item.getCustomizations()) {
+                    addOrderItemCustomization(conn, orderId, item.getMenuItem().getId(), customization.getId());
+                }
+            }
+
+            conn.commit();
+            return orderId;
+        } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException rollbackEx) {
+                    rollbackEx.printStackTrace();
+                }
+            }
+            throw new RuntimeException("Failed to submit order: " + e.getMessage(), e);
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private int createOrderHeader(Connection conn, int staffId, BigDecimal subtotal, BigDecimal tax, BigDecimal serviceFee, BigDecimal total) throws SQLException {
+        String sql = """
+            INSERT INTO orders (staff_id, subtotal, tax, service_fee, total)
+            VALUES (?, ?, ?, ?, ?)
+            RETURNING id
+        """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, staffId);
+            ps.setBigDecimal(2, subtotal);
+            ps.setBigDecimal(3, tax);
+            ps.setBigDecimal(4, serviceFee);
+            ps.setBigDecimal(5, total);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        }
+        throw new SQLException("Failed to insert order header");
+    }
+
+    private void addOrderItem(Connection conn, int orderId, int menuItemId, int quantity, BigDecimal unitPrice) throws SQLException {
+        String sql = "INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price) VALUES (?, ?, ?, ?)";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            ps.setInt(2, menuItemId);
+            ps.setInt(3, quantity);
+            ps.setBigDecimal(4, unitPrice);
+            ps.executeUpdate();
+        }
+    }
+
+    private void addOrderItemCustomization(Connection conn, int orderId, int menuItemId, int customizationId) throws SQLException {
+        String sql = """
+            INSERT INTO order_item_customizations (order_id, menu_item_id, customization_id)
+            VALUES (?, ?, ?)
+        """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            ps.setInt(2, menuItemId);
+            ps.setInt(3, customizationId);
+            ps.executeUpdate();
+        }
+    }
 }
