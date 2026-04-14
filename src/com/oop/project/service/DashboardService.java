@@ -67,7 +67,9 @@ public class DashboardService {
     }
 
     public List<Order> searchOrders(String keyword) {
-        List<Order> allOrders = orderRepo.findAll();
+        List<Order> allOrders = orderRepo.findAll().stream()
+            .map(this::getOrderWithItems)
+            .collect(Collectors.toList());
         String searchTerm = keyword.toLowerCase().trim();
 
         return allOrders.stream()
