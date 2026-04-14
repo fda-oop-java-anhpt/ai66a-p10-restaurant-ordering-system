@@ -8,7 +8,6 @@ public class DBConnection {
 
     private static final String DEFAULT_URL = "jdbc:postgresql://localhost:5432/restaurant_pos";
     private static final String DEFAULT_USER = "postgres";
-    private static final String DEFAULT_PASSWORD = "96322541";
 
     private static String getSetting(String key, String defaultValue) {
         String sysProp = System.getProperty(key);
@@ -33,7 +32,11 @@ public class DBConnection {
     }
 
     public static String getPassword() {
-        return getSetting("DB_PASSWORD", DEFAULT_PASSWORD);
+        String password = getSetting("DB_PASSWORD", "");
+        if (password.isBlank()) {
+            throw new IllegalStateException("DB_PASSWORD is required. Set it as a system property or environment variable.");
+        }
+        return password;
     }
 
     public static Connection getConnection() {
