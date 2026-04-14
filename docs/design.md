@@ -195,10 +195,10 @@ Mô tả cách hệ thống lưu trữ dữ liệu.
 ### 6.1. Hình thức lưu trữ
 - [ ] In-memory
 - [ ] File (txt / csv / json)
-- [ ] Database (MySQL, SQLite, ...)
+- [x] Database (PostgreSQL)
 
 **Mô tả lý do lựa chọn:**
-> …
+> Hệ thống được thiết kế theo mô hình ứng dụng có trạng thái lưu trữ lâu dài, nên dữ liệu cần được giữ ổn định giữa các lần chạy. PostgreSQL phù hợp vì hỗ trợ quan hệ giữa các bảng, ràng buộc khóa ngoại, truy vấn thống kê và các thao tác CRUD cho menu, đơn hàng, người dùng, log đăng nhập và audit log. Ngoài ra, các repository trong project đang truy cập DB trực tiếp qua JDBC nên việc dùng database quan hệ là lựa chọn tự nhiên và nhất quán với kiến trúc hiện tại.
 
 ---
 
@@ -208,8 +208,21 @@ Mô tả các bảng / file chính và dữ liệu được lưu trữ.
 
 | Tên bảng / file | Mô tả | Dữ liệu chính |
 |----------------|------|--------------|
-| | | |
-| | | |
+| `roles` | Danh mục vai trò người dùng | `id`, `name` (`MANAGER`, `STAFF`) |
+| `users` | Thông tin tài khoản đăng nhập | `id`, `username`, `password`, `created_at`, `role_id` |
+| `login_logs` | Lịch sử đăng nhập/đăng xuất | `id`, `user_id`, `action`, `logged_at` |
+| `menu_categories` | Danh mục món ăn | `id`, `name` |
+| `menu_items` | Danh sách món ăn | `id`, `name`, `description`, `base_price`, `category_id`, `created_at` |
+| `customization_options` | Các tùy chọn thêm/bớt cho món | `id`, `name`, `price_delta`, `menu_item_id` |
+| `orders` | Thông tin đơn hàng tổng | `id`, `staff_id`, `subtotal`, `tax`, `service_fee`, `total`, `created_at` |
+| `order_items` | Chi tiết từng món trong đơn | `id`, `order_id`, `menu_item_id`, `quantity`, `unit_price` |
+| `order_item_customizations` | Liên kết customization với từng món trong đơn | `id`, `order_id`, `menu_item_id`, `customization_id` |
+| `audit_logs` | Ghi lại thay đổi giá món | `id`, `manager_id`, `menu_item_id`, `old_price`, `new_price`, `changed_at` |
+
+
+
+**Dữ liệu khởi tạo:**
+> File `seed_static.sql` dùng để nạp dữ liệu mẫu ban đầu cho vai trò, người dùng, danh mục, món ăn, tùy chọn custom, một số order mẫu, login log và audit log. Nhờ đó hệ thống có sẵn dữ liệu để test giao diện và các báo cáo dashboard ngay sau khi cài đặt.
 
 ---
 
