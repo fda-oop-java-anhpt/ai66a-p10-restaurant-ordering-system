@@ -5,10 +5,10 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -19,7 +19,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.swing.*;
+import javax.swing.AbstractAction;
+import javax.swing.AbstractButton;
+import javax.swing.ActionMap;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.InputMap;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.KeyStroke;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
@@ -41,6 +63,7 @@ public class OrdersPanel extends JPanel {
     private final OrderService orderService = new OrderService();
     private final DecimalFormat priceFormat = new DecimalFormat("#,##0");
     private OrderDraft currentDraft;
+    private Runnable onUpdate;
 
     private final JComboBox<MenuItem> menuCombo = new JComboBox<>();
     private final JPanel customizationContainer = new JPanel();
@@ -59,7 +82,6 @@ public class OrdersPanel extends JPanel {
     private final JButton newOrderBtn = new JButton("New Order");
     private final JButton addOrUpdateBtn = new JButton("Add Item");
     private final JButton removeBtn = new JButton("Remove Selected");
-    private final JButton checkoutBtn = new JButton("Checkout");
 
     private final JTable orderTable = new JTable();
     private final DefaultTableModel orderModel = new DefaultTableModel(
@@ -70,8 +92,13 @@ public class OrdersPanel extends JPanel {
     private boolean applyingSelection = false;
 
     public OrdersPanel(User currentUser) {
+        this(currentUser, new OrderService().createOrder(currentUser.getId()), null);
+    }
+
+    public OrdersPanel(User currentUser, OrderDraft sharedDraft, Runnable onUpdate) {
         this.currentUser = currentUser;
-        this.currentDraft = orderService.createOrder(currentUser.getId());
+        this.currentDraft = sharedDraft;
+        this.onUpdate = onUpdate;
 
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -83,6 +110,11 @@ public class OrdersPanel extends JPanel {
         bindEvents();
 
         loadMenuItems();
+        refreshTable();
+        updatePreviewAndSubtotal();
+    }
+
+    public void refresh() {
         refreshTable();
         updatePreviewAndSubtotal();
     }
@@ -136,7 +168,6 @@ public class OrdersPanel extends JPanel {
         buttonBar.add(newOrderBtn);
         buttonBar.add(addOrUpdateBtn);
         buttonBar.add(removeBtn);
-        buttonBar.add(checkoutBtn);
         editor.add(buttonBar);
 
         add(editor, BorderLayout.WEST);
@@ -183,7 +214,6 @@ public class OrdersPanel extends JPanel {
         newOrderBtn.addActionListener(e -> startNewOrder());
         addOrUpdateBtn.addActionListener(e -> addOrUpdateItem());
         removeBtn.addActionListener(e -> removeSelectedItem());
-        checkoutBtn.addActionListener(e -> checkout());
         decreaseQtyBtn.addActionListener(e -> decreaseQuantity());
         increaseQtyBtn.addActionListener(e -> increaseQuantity());
 
@@ -251,13 +281,16 @@ public class OrdersPanel extends JPanel {
     }
 
     private void startNewOrder() {
-        currentDraft = orderService.createOrder(currentUser.getId());
+        currentDraft.getItems().clear();
         orderModel.setRowCount(0);
         orderTable.clearSelection();
         addOrUpdateBtn.setText("Add Item");
         quantityField.setText("1");
         clearCustomizationSelection();
         updatePreviewAndSubtotal();
+        if (onUpdate != null) {
+            onUpdate.run();
+        }
     }
 
     private void addOrUpdateItem() {
@@ -292,6 +325,9 @@ public class OrdersPanel extends JPanel {
 
         refreshTable();
         updatePreviewAndSubtotal();
+        if (onUpdate != null) {
+            onUpdate.run();
+        }
     }
 
     private void removeSelectedItem() {
@@ -306,6 +342,9 @@ public class OrdersPanel extends JPanel {
         addOrUpdateBtn.setText("Add Item");
         updatePreviewAndSubtotal();
         JOptionPane.showMessageDialog(this, "Item removed successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
+        if (onUpdate != null) {
+            onUpdate.run();
+        }
     }
 
     private void refreshTable() {
@@ -558,26 +597,40 @@ public class OrdersPanel extends JPanel {
 
     private int groupPriority(String groupTitle) {
         return switch (groupTitle) {
-            case "Add-ons" -> 0;
-            case "Removals" -> 1;
-            case "Spicy Level" -> 2;
-            default -> 3;
+            case "Size" -> 0;
+            case "Extra Proteins" -> 1;
+            case "Sauce" -> 2;
+            case "Extras" -> 3;
+            case "Spice Level" -> 4;
+            case "Removals" -> 5;
+            default -> 6;
         };
     }
 
     private String classifyGroupTitle(String optionName) {
         String lower = optionName.toLowerCase();
-        if (lower.contains("spicy") || lower.contains("mild") || lower.contains("medium") || lower.contains("hot")) {
-            return "Spicy Level";
+        
+        if (lower.contains("size:") || lower.matches(".*(small|medium|large|extra large|s|m|l|xl).*")) {
+            return "Size";
+        }
+        if (lower.contains("sauce:") || lower.matches(".*(gravy|sauce|dressing).*")) {
+            return "Sauce";
+        }
+        if (lower.contains("protein:") || lower.matches(".*(chicken|beef|pork|shrimp|tofu).*")) {
+            return "Extra Proteins";
+        }
+        if (lower.contains("spic") || lower.matches(".*(mild|medium|hot|extra hot|spicy).*")) {
+            return "Spice Level";
         }
         if (lower.startsWith("no ") || lower.startsWith("without ")) {
             return "Removals";
         }
-        return "Add-ons";
+        
+        return "Extras";
     }
 
     private boolean isSingleSelectGroup(String groupTitle) {
-        return "Spicy Level".equals(groupTitle);
+        return "Size".equals(groupTitle) || "Sauce".equals(groupTitle) || "Spice Level".equals(groupTitle);
     }
 
     private String formatOptionLabel(CustomizationOption option) {
@@ -613,14 +666,5 @@ public class OrdersPanel extends JPanel {
         for (AbstractButton button : customizationButtons.values()) {
             button.setSelected(false);
         }
-    }
-
-    private void checkout() {
-        if (currentDraft.getItems().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Cart is empty. Please add items before checkout.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        JOptionPane.showMessageDialog(this, "Order completed!\nSubtotal: " + formatCurrency(currentDraft.getSubtotal()), "Checkout", JOptionPane.INFORMATION_MESSAGE);
-        startNewOrder();
     }
 }
