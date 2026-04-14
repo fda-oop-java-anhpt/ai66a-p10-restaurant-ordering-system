@@ -33,6 +33,10 @@ public class OrderDraft {
         items.remove(index);
     }
 
+    public void clearItems() {
+        items.clear();
+    }
+
     public BigDecimal getSubtotal() {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (OrderItem item : items) {
