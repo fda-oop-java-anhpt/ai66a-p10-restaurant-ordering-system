@@ -1,6 +1,5 @@
 package com.oop.project.service;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 import com.oop.project.model.MenuCategory;
@@ -25,7 +24,4 @@ public class MenuService {
         return itemRepo.findAll();
     }
 
-    public void addFood(String name, String description, BigDecimal basePrice, int categoryId) {
-        itemRepo.addFood(name, description, basePrice, categoryId);
-    }
 }

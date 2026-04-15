@@ -11,9 +11,17 @@ public class MenuAdminService extends MenuService {
     
     private final AuditLogRepository auditRepo = new AuditLogRepository();
 
+    public void addFood(User admin, String name, String description, BigDecimal basePrice, int categoryId) {
+        if (!admin.isManager()) {
+            throw new UnauthorizedException("Only manager can add menu item");
+        }
+
+        itemRepo.addFood(name, description, basePrice, categoryId);
+    }
+
     public void updatePrice(User admin, int menuItemId, BigDecimal newPrice) {
         if (!admin.isManager()) {
-            throw new UnauthorizedException("Only admin can update menu price");
+            throw new UnauthorizedException("Only manager can update menu price");
         }
 
         MenuItem item = itemRepo.findById(menuItemId);
@@ -32,7 +40,7 @@ public class MenuAdminService extends MenuService {
 
     public void deleteFood(User admin, int menuItemId) {
         if (!admin.isManager()) {
-            throw new UnauthorizedException("Only admin can delete menu item");
+            throw new UnauthorizedException("Only manager can delete menu item");
         }
 
         MenuItem item = itemRepo.findById(menuItemId);

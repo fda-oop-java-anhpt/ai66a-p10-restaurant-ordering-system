@@ -116,6 +116,7 @@ public class MenuPanel extends JPanel {
         addFoodBtn.addActionListener(e -> showAddFoodDialog());
         editPriceBtn.addActionListener(e -> editSelectedPrice());
         deleteFoodBtn.addActionListener(e -> deleteSelectedFood());
+        addFoodBtn.setEnabled(currentUser.isManager());
         editPriceBtn.setEnabled(currentUser.isManager());
         deleteFoodBtn.setEnabled(currentUser.isManager());
 
@@ -147,6 +148,11 @@ public class MenuPanel extends JPanel {
     }
 
     private void showAddFoodDialog() {
+        if (!currentUser.isManager()) {
+            JOptionPane.showMessageDialog(this, "Only manager can add menu item.", "Add Food", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         List<MenuCategory> categories = menuService.getAllCategories();
         if (categories.isEmpty()) {
             JOptionPane.showMessageDialog(
@@ -223,15 +229,19 @@ public class MenuPanel extends JPanel {
                 continue;
             }
 
-            menuService.addFood(name, description, price, category.getId());
-            if (currentCategoryId == ALL_CATEGORY_ID) {
-                loadMenuItems(ALL_CATEGORY_ID);
-            } else {
-                selectCategory(category.getId());
-                loadMenuItems(category.getId());
+            try {
+                adminService.addFood(currentUser, name, description, price, category.getId());
+                if (currentCategoryId == ALL_CATEGORY_ID) {
+                    loadMenuItems(ALL_CATEGORY_ID);
+                } else {
+                    selectCategory(category.getId());
+                    loadMenuItems(category.getId());
+                }
+                notifyMenuChanged();
+                return;
+            } catch (RuntimeException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Add Food", JOptionPane.ERROR_MESSAGE);
             }
-            notifyMenuChanged();
-            return;
         }
     }
 
