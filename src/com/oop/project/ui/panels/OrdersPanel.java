@@ -281,7 +281,7 @@ public class OrdersPanel extends JPanel {
     }
 
     private void startNewOrder() {
-        currentDraft.getItems().clear();
+        currentDraft.clearItems();
         orderModel.setRowCount(0);
         orderTable.clearSelection();
         addOrUpdateBtn.setText("Add Item");
