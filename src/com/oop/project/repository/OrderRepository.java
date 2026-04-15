@@ -143,15 +143,15 @@ public class OrderRepository {
                 o.created_at
             FROM orders o
             JOIN users u ON o.staff_id = u.id
-            WHERE DATE(o.created_at) BETWEEN ? AND ?
+            WHERE o.created_at >= ? AND o.created_at < ?
             ORDER BY o.created_at DESC
         """;
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, startDate.toString());
-            ps.setString(2, endDate.toString());
+            ps.setTimestamp(1, Timestamp.valueOf(startDate.atStartOfDay()));
+            ps.setTimestamp(2, Timestamp.valueOf(endDate.plusDays(1).atStartOfDay()));
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {

@@ -257,16 +257,45 @@ public class DashboardPanel extends JPanel {
             java.util.Date selectedDate = (java.util.Date) dateSpinner.getValue();
             LocalDate date = selectedDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
             
-            BigDecimal minPrice = new BigDecimal(minPriceField.getText().isEmpty() ? "0" : minPriceField.getText());
-            BigDecimal maxPrice = new BigDecimal(maxPriceField.getText().isEmpty() ? "999999" : maxPriceField.getText());
+            BigDecimal minPrice = parsePrice(minPriceField.getText(), "0");
+            BigDecimal maxPrice = parsePrice(maxPriceField.getText(), "999999");
+            if (minPrice.compareTo(maxPrice) > 0) {
+                javax.swing.JOptionPane.showMessageDialog(
+                    this,
+                    "Min price must be less than or equal to max price",
+                    "Invalid Filter",
+                    javax.swing.JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
             
             List<Order> filtered = dashboardService.filterOrders(date, minPrice, maxPrice);
             
             // Determine sort order
-            String[] sortOptions = {"time_desc", "time_asc", "total_desc", "total_asc"};
-            String sortBy = sortOptions[sortByIndex];
-            boolean ascending = sortBy.contains("asc");
-            String sortField = sortBy.contains("time") ? "time" : "total";
+            boolean ascending;
+            String sortField;
+            switch (sortByIndex) {
+                case 1 -> {
+                    ascending = true;
+                    sortField = "time";
+                }
+                case 2 -> {
+                    ascending = false;
+                    sortField = "total";
+                }
+                case 3 -> {
+                    ascending = true;
+                    sortField = "total";
+                }
+                case 0 -> {
+                    ascending = false;
+                    sortField = "time";
+                }
+                default -> {
+                    ascending = false;
+                    sortField = "time";
+                }
+            }
             
             filtered = dashboardService.sortOrders(filtered, sortField, ascending);
             currentOrders = filtered;
@@ -274,6 +303,11 @@ public class DashboardPanel extends JPanel {
         } catch (NumberFormatException e) {
             javax.swing.JOptionPane.showMessageDialog(this, "Invalid filter values", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private BigDecimal parsePrice(String raw, String defaultValue) {
+        String normalized = raw == null ? "" : raw.trim().replace(",", "").replace(" ", "");
+        return new BigDecimal(normalized.isEmpty() ? defaultValue : normalized);
     }
     
     private void searchOrders() {
