@@ -119,6 +119,19 @@ public class OrdersPanel extends JPanel {
         updatePreviewAndSubtotal();
     }
 
+    public void reloadMenuItems() {
+        MenuItem selected = (MenuItem) menuCombo.getSelectedItem();
+        Integer selectedItemId = selected != null ? selected.getId() : null;
+
+        loadMenuItems();
+
+        if (selectedItemId != null) {
+            selectMenuItemById(selectedItemId);
+            loadCustomizationsForSelectedItem();
+        }
+        updatePreviewAndSubtotal();
+    }
+
     private void configureMenuComboRenderer() {
         menuCombo.setRenderer(new DefaultListCellRenderer() {
             @Override

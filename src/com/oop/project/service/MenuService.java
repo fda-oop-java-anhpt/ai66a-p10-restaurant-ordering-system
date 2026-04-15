@@ -21,6 +21,10 @@ public class MenuService {
         return itemRepo.findbyCategory(categoryId);
     }
 
+    public List<MenuItem> getAllMenuItems() {
+        return itemRepo.findAll();
+    }
+
     public void addFood(String name, String description, BigDecimal basePrice, int categoryId) {
         itemRepo.addFood(name, description, basePrice, categoryId);
     }

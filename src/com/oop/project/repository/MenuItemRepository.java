@@ -102,6 +102,18 @@ public class MenuItemRepository {
         }
     }
 
+    public boolean deleteById(int menuItemId) {
+        String sql = "DELETE FROM menu_items WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, menuItemId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot delete menu item", e);
+        }
+    }
+
     private MenuItem map(ResultSet rs) throws SQLException {
         return new MenuItem(
             rs.getInt("id"),

@@ -29,24 +29,33 @@ import com.oop.project.service.MenuAdminService;
 import com.oop.project.service.MenuService;
 
 public class MenuPanel extends JPanel {
+    private static final int ALL_CATEGORY_ID = -1;
+    private static final MenuCategory ALL_CATEGORY = new MenuCategory(ALL_CATEGORY_ID, "All Categories");
     
     private final User currentUser;
     private final MenuService menuService;
     private final MenuAdminService adminService;
+    private final Runnable onMenuChanged;
 
     private final JList<MenuCategory> categoryList = new JList<>();
     private final JTable itemTable = new JTable();
     private final JButton addFoodBtn = new JButton("Add");
     private final JButton editPriceBtn = new JButton("Edit Price");
+    private final JButton deleteFoodBtn = new JButton("Delete");
     private final JTextField searchField = new JTextField();
     
     private int currentCategoryId = -1;
     private List<MenuItem> allMenuItems;
 
     public MenuPanel(User user) {
+        this(user, null);
+    }
+
+    public MenuPanel(User user, Runnable onMenuChanged) {
         this.currentUser = user;
         this.menuService = new MenuService();
         this.adminService = new MenuAdminService();
+        this.onMenuChanged = onMenuChanged;
 
         setLayout(new BorderLayout(10, 10));
 
@@ -106,11 +115,14 @@ public class MenuPanel extends JPanel {
     private JPanel buildActionPanel() {
         addFoodBtn.addActionListener(e -> showAddFoodDialog());
         editPriceBtn.addActionListener(e -> editSelectedPrice());
+        deleteFoodBtn.addActionListener(e -> deleteSelectedFood());
         editPriceBtn.setEnabled(currentUser.isManager());
+        deleteFoodBtn.setEnabled(currentUser.isManager());
 
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         panel.add(addFoodBtn);
         panel.add(editPriceBtn);
+        panel.add(deleteFoodBtn);
         return panel;
     }
 
@@ -152,7 +164,7 @@ public class MenuPanel extends JPanel {
         JComboBox<MenuCategory> categoryCombo = new JComboBox<>(categories.toArray(MenuCategory[]::new));
 
         MenuCategory selectedCategory = categoryList.getSelectedValue();
-        if (selectedCategory != null) {
+        if (selectedCategory != null && selectedCategory.getId() != ALL_CATEGORY_ID) {
             for (MenuCategory category : categories) {
                 if (category.getId() == selectedCategory.getId()) {
                     categoryCombo.setSelectedItem(category);
@@ -212,8 +224,13 @@ public class MenuPanel extends JPanel {
             }
 
             menuService.addFood(name, description, price, category.getId());
-            selectCategory(category.getId());
-            loadMenuItems(category.getId());
+            if (currentCategoryId == ALL_CATEGORY_ID) {
+                loadMenuItems(ALL_CATEGORY_ID);
+            } else {
+                selectCategory(category.getId());
+                loadMenuItems(category.getId());
+            }
+            notifyMenuChanged();
             return;
         }
     }
@@ -249,6 +266,7 @@ public class MenuPanel extends JPanel {
             if (cat != null) {
                 loadMenuItems(cat.getId());
             }
+            notifyMenuChanged();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Price must be a valid number.");
         } catch (RuntimeException ex) {
@@ -256,14 +274,64 @@ public class MenuPanel extends JPanel {
         }
     }
 
+    private void deleteSelectedFood() {
+        int row = itemTable.getSelectedRow();
+        if (row == -1) {
+            JOptionPane.showMessageDialog(this, "Please select a food item first.");
+            return;
+        }
+
+        int itemId = (int) itemTable.getValueAt(row, 0);
+        String itemName = String.valueOf(itemTable.getValueAt(row, 1));
+
+        int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Delete selected item: " + itemName + "?",
+            "Delete Food",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            adminService.deleteFood(currentUser, itemId);
+            MenuCategory cat = categoryList.getSelectedValue();
+            if (cat != null) {
+                loadMenuItems(cat.getId());
+            }
+            notifyMenuChanged();
+            JOptionPane.showMessageDialog(this, "Food item deleted successfully.");
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Cannot delete this item. It may be used in existing orders.",
+                "Delete Food",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+
+    private void notifyMenuChanged() {
+        if (onMenuChanged != null) {
+            onMenuChanged.run();
+        }
+    }
+
     private void loadCategories() {
         List<MenuCategory> categories = menuService.getAllCategories();
+        categories.add(0, ALL_CATEGORY);
         categoryList.setListData(categories.toArray(MenuCategory[]::new));
+        categoryList.setSelectedIndex(0);
     }
 
     private void loadMenuItems(int categoryId) {
         currentCategoryId = categoryId;
-        allMenuItems = menuService.getMenuItemsByCategory(categoryId);
+        allMenuItems = categoryId == ALL_CATEGORY_ID
+            ? menuService.getAllMenuItems()
+            : menuService.getMenuItemsByCategory(categoryId);
         searchField.setText("");
         applyFilter();
     }

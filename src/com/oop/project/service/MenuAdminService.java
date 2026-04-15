@@ -29,4 +29,17 @@ public class MenuAdminService extends MenuService {
             oldPrice, 
             newPrice);
     }
+
+    public void deleteFood(User admin, int menuItemId) {
+        if (!admin.isManager()) {
+            throw new UnauthorizedException("Only admin can delete menu item");
+        }
+
+        MenuItem item = itemRepo.findById(menuItemId);
+        if (item == null) {
+            throw new RuntimeException("Menu item not found");
+        }
+
+        itemRepo.deleteById(menuItemId);
+    }
 }
