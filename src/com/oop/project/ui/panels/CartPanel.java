@@ -14,6 +14,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
 import com.oop.project.model.OrderDraft;
@@ -21,6 +22,8 @@ import com.oop.project.model.OrderItem;
 import com.oop.project.model.User;
 import com.oop.project.repository.OrderRepository;
 import com.oop.project.service.OrderService;
+import com.oop.project.ui.theme.ThemeHelper;
+import com.oop.project.ui.theme.ThemeInsets;
 
 public class CartPanel extends JPanel {
     
@@ -53,7 +56,7 @@ public class CartPanel extends JPanel {
         this.onUpdate = onUpdate;
         
         setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        setBorder(new EmptyBorder(ThemeInsets.section()));
         
         buildCartTable();
         buildCalculationPanel();
@@ -64,7 +67,7 @@ public class CartPanel extends JPanel {
     private void buildCartTable() {
         cartTable.setModel(cartModel);
         cartTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        cartTable.setRowHeight(25);
+        ThemeHelper.applyTableStyle(cartTable);
         
         add(new JScrollPane(cartTable), BorderLayout.CENTER);
     }
@@ -106,6 +109,11 @@ public class CartPanel extends JPanel {
             editBtn.setEnabled(hasSelection);
             removeBtn.setEnabled(hasSelection);
         });
+
+        ThemeHelper.applyGhostButton(editBtn);
+        ThemeHelper.applyGhostButton(removeBtn);
+        ThemeHelper.applyGhostButton(emptyBtn);
+        ThemeHelper.applyPrimaryButton(checkoutBtn);
         
         buttonPanel.add(editBtn);
         buttonPanel.add(removeBtn);

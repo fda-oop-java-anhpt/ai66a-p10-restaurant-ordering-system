@@ -7,6 +7,7 @@ import javax.swing.SwingUtilities;
 
 import com.oop.project.db.DBConnection;
 import com.oop.project.ui.LoginFrame;
+import com.oop.project.ui.theme.ThemeFonts;
 
 public class Main {
 
@@ -34,6 +35,7 @@ public class Main {
         }
 
         SwingUtilities.invokeLater(() -> {
+            ThemeFonts.initialize();
             new LoginFrame().setVisible(true);
         });
     }
