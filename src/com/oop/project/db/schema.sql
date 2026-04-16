@@ -46,6 +46,7 @@ CREATE TABLE menu_items (
   id SERIAL PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
   description VARCHAR(255),
+  image_path VARCHAR(255),
   base_price NUMERIC(12,2) NOT NULL DEFAULT 0,
   category_id INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -67,18 +68,36 @@ CREATE TABLE customization_options (
 );
 
 -- =====================
+-- Dining tables
+-- =====================
+CREATE TABLE dining_tables (
+  id SERIAL PRIMARY KEY,
+  table_number INTEGER NOT NULL UNIQUE CHECK (table_number > 0),
+  capacity INTEGER NOT NULL DEFAULT 4 CHECK (capacity > 0),
+  status VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE'
+    CHECK (status IN ('AVAILABLE', 'OCCUPIED', 'RESERVED', 'CLEANING'))
+);
+
+-- =====================
 -- Orders
 -- =====================
 CREATE TABLE orders (
   id SERIAL PRIMARY KEY,
   staff_id INTEGER NOT NULL,
+  table_number INTEGER,
+  payment_method VARCHAR(10) NOT NULL DEFAULT 'CASH'
+    CHECK (payment_method IN ('CARD', 'CASH')),
+  order_status VARCHAR(20) NOT NULL DEFAULT 'PAID'
+    CHECK (order_status IN ('OPEN', 'SENT_TO_KITCHEN', 'PAID', 'VOID')),
   subtotal NUMERIC(12,2) NOT NULL DEFAULT 0,
   tax NUMERIC(12,2) NOT NULL DEFAULT 0,
   service_fee NUMERIC(12,2) NOT NULL DEFAULT 0,
   total NUMERIC(12,2) NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_order_staff
-    FOREIGN KEY (staff_id) REFERENCES users(id)
+    FOREIGN KEY (staff_id) REFERENCES users(id),
+  CONSTRAINT fk_order_table_number
+    FOREIGN KEY (table_number) REFERENCES dining_tables(table_number)
 );
 
 -- =====================
@@ -102,15 +121,46 @@ CREATE TABLE order_items (
 CREATE TABLE order_item_customizations (
   id SERIAL PRIMARY KEY,
   order_id INTEGER NOT NULL,
+  order_item_id INTEGER,
   menu_item_id INTEGER NOT NULL,
   customization_id INTEGER NOT NULL,
   CONSTRAINT fk_oic_order
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_oic_order_item
+    FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE,
   CONSTRAINT fk_oic_menuitem
     FOREIGN KEY (menu_item_id) REFERENCES menu_items(id),
   CONSTRAINT fk_oic_customopt
     FOREIGN KEY (customization_id) REFERENCES customization_options(id)
 );
+
+CREATE INDEX idx_oic_order_item_id ON order_item_customizations(order_item_id);
+
+CREATE OR REPLACE FUNCTION set_oic_order_item_id()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.order_item_id IS NULL THEN
+    SELECT oi.id
+    INTO NEW.order_item_id
+    FROM order_items oi
+    WHERE oi.order_id = NEW.order_id
+      AND oi.menu_item_id = NEW.menu_item_id
+    ORDER BY oi.id DESC
+    LIMIT 1;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_set_oic_order_item_id
+BEFORE INSERT ON order_item_customizations
+FOR EACH ROW
+EXECUTE FUNCTION set_oic_order_item_id();
+
+CREATE INDEX idx_orders_created_at ON orders(created_at);
+CREATE INDEX idx_orders_staff_created_at ON orders(staff_id, created_at);
+CREATE INDEX idx_orders_status ON orders(order_status);
 
 -- =====================
 -- Audit log
