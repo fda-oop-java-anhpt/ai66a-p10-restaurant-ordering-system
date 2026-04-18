@@ -94,7 +94,7 @@ public class LoginFrame extends JFrame {
         loginBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
         loginBtn.addActionListener(e -> handleLogin());
 
-        JLabel helper = new JLabel("Role pills are UI-first; authentication still uses account credentials");
+        JLabel helper = new JLabel("Select your role before login");
         helper.setAlignmentX(Component.CENTER_ALIGNMENT);
         helper.setForeground(AppTheme.ON_SURFACE_VARIANT);
         helper.setFont(bodyFont(11f));
