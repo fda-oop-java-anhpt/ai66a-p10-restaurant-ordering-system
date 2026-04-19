@@ -212,7 +212,7 @@ public class LoginFrame extends JFrame {
         String username = txtUsername.getText().trim();
         String password = new String(txtPassword.getPassword());
 
-        User user = authService.authenticate(username, password);
+        User user = authService.authenticate(username, password, selectedRole);
 
         if (user == null) {
             JOptionPane.showMessageDialog(
