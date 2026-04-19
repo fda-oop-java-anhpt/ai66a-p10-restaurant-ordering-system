@@ -10,8 +10,8 @@ public class AuthService {
     private final UserRepository userRepository = new UserRepository();
     private final LoginLogRepository loginLogRepository = new LoginLogRepository();
 
-    public User authenticate(String username, String password) {
-        User user = userRepository.login(username, password);
+    public User authenticate(String username, String password, String role) {
+        User user = userRepository.login(username, password, role);
         if (user != null) {
             loginLogRepository.log(user.getId(), "LOGIN");
 
