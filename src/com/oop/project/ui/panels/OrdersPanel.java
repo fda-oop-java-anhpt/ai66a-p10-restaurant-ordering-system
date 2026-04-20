@@ -6,6 +6,7 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
@@ -46,6 +47,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JSeparator;
 import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
@@ -97,9 +99,9 @@ public class OrdersPanel extends JPanel {
     private final JTextArea noteArea = new JTextArea(3, 20);
     private final JScrollPane noteScroll = new JScrollPane(noteArea);
 
-    private final JButton newOrderBtn = new JButton("New Order");
-    private final JButton addOrUpdateBtn = new JButton("Add Item to Order");
-    private final JButton removeBtn = new JButton("Remove Selected");
+    private final JButton newOrderBtn = new JButton("NEW ORDER");
+    private final JButton addOrUpdateBtn = new JButton("ADD ITEM TO ORDER");
+    private final JButton removeBtn = new JButton("REMOVE SELECTED");
 
     private final JTable orderTable = new JTable();
     private final DefaultTableModel orderModel = new DefaultTableModel(
@@ -111,6 +113,11 @@ public class OrdersPanel extends JPanel {
     private final JPanel categoryTabsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, AppTheme.SPACE_2, 0));
     private final JPanel menuCardsPanel = new JPanel();
     private final JLabel systemNoticeLabel = new JLabel("System ready. Select a menu item to begin.");
+
+    // Pricing labels for the order rail
+    private final JLabel unitPriceValueLabel = new JLabel("$0.00");
+    private final JLabel lineTotalValueLabel = new JLabel("$0.00");
+    private final JLabel subtotalValueLabel = new JLabel("$0.00");
 
     private final List<MenuItem> allMenuItems = new ArrayList<>();
     private final List<MenuItem> visibleMenuItems = new ArrayList<>();
@@ -185,38 +192,23 @@ public class OrdersPanel extends JPanel {
         title.setForeground(AppTheme.TEXT_PRIMARY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        // Separator line under title
+        JPanel titleSeparator = new JPanel();
+        titleSeparator.setOpaque(false);
+        titleSeparator.setAlignmentX(Component.LEFT_ALIGNMENT);
+        titleSeparator.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        titleSeparator.setPreferredSize(new Dimension(0, 1));
+        titleSeparator.setBackground(AppTheme.OUTLINE);
+        titleSeparator.setOpaque(true);
+
         categoryTabsPanel.setOpaque(false);
         categoryTabsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel searchPanel = new JPanel(new BorderLayout());
-        searchPanel.setOpaque(false);
-        searchPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JLabel searchLabel = new JLabel("Search menu item");
-        searchLabel.setFont(ThemeFonts.labelMd());
-        searchLabel.setForeground(AppTheme.TEXT_SECONDARY);
-
-        searchField.setFont(ThemeFonts.bodyMd());
-        searchField.setBorder(BorderFactory.createEmptyBorder(
-            AppTheme.SPACE_2,
-            AppTheme.SPACE_2,
-            AppTheme.SPACE_2,
-            AppTheme.SPACE_2
-        ));
-
-        TonalCard searchCard = new TonalCard(AppTheme.RADIUS_MD, AppTheme.SURFACE_CONTAINER_LOW);
-        searchCard.setLayout(new BorderLayout());
-        searchCard.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        searchCard.add(searchField, BorderLayout.CENTER);
-
-        searchPanel.add(searchLabel, BorderLayout.NORTH);
-        searchPanel.add(searchCard, BorderLayout.CENTER);
-
         header.add(title);
         header.add(Box.createVerticalStrut(AppTheme.SPACE_2));
+        header.add(titleSeparator);
+        header.add(Box.createVerticalStrut(AppTheme.SPACE_2));
         header.add(categoryTabsPanel);
-        header.add(Box.createVerticalStrut(AppTheme.SPACE_3));
-        header.add(searchPanel);
 
         menuCardsPanel.setOpaque(false);
         menuCardsPanel.setLayout(new BoxLayout(menuCardsPanel, BoxLayout.Y_AXIS));
@@ -226,154 +218,262 @@ public class OrdersPanel extends JPanel {
         cardsScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         cardsScroll.getViewport().setBackground(AppTheme.SURFACE_CONTAINER_LOWEST);
 
-        TonalCard noticeCard = new TonalCard(AppTheme.RADIUS_MD, AppTheme.SURFACE_CONTAINER_LOW);
-        noticeCard.setLayout(new BorderLayout());
-        noticeCard.setBorder(BorderFactory.createEmptyBorder(
-            AppTheme.SPACE_2,
-            AppTheme.SPACE_3,
-            AppTheme.SPACE_2,
-            AppTheme.SPACE_3
-        ));
+        // System notice bar with info icon
+        JPanel noticePanel = new JPanel(new BorderLayout(AppTheme.SPACE_2, 0));
+        noticePanel.setBackground(new Color(0xE8F0FE));
+        noticePanel.setBorder(BorderFactory.createEmptyBorder(
+            AppTheme.SPACE_2, AppTheme.SPACE_3, AppTheme.SPACE_2, AppTheme.SPACE_3));
+
+        JLabel infoIcon = new JLabel("\u2139") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(0x1565C0));
+                g2.fillOval(0, 0, getWidth(), getHeight());
+                g2.setColor(Color.WHITE);
+                g2.setFont(getFont().deriveFont(Font.BOLD, 10f));
+                java.awt.FontMetrics fm = g2.getFontMetrics();
+                String txt = "i";
+                int tx = (getWidth() - fm.stringWidth(txt)) / 2;
+                int ty = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                g2.drawString(txt, tx, ty);
+                g2.dispose();
+            }
+        };
+        infoIcon.setPreferredSize(new Dimension(16, 16));
+
+        JPanel noticeTextPanel = new JPanel();
+        noticeTextPanel.setOpaque(false);
+        noticeTextPanel.setLayout(new BoxLayout(noticeTextPanel, BoxLayout.Y_AXIS));
+
+        JLabel noticeTitleLbl = new JLabel("SYSTEM NOTICE");
+        noticeTitleLbl.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        noticeTitleLbl.setForeground(new Color(0x1A237E));
 
         systemNoticeLabel.setFont(ThemeFonts.labelMd());
         systemNoticeLabel.setForeground(AppTheme.TEXT_SECONDARY);
-        noticeCard.add(systemNoticeLabel, BorderLayout.CENTER);
+
+        noticeTextPanel.add(noticeTitleLbl);
+        noticeTextPanel.add(systemNoticeLabel);
+
+        noticePanel.add(infoIcon, BorderLayout.WEST);
+        noticePanel.add(noticeTextPanel, BorderLayout.CENTER);
 
         menuArea.add(header, BorderLayout.NORTH);
         menuArea.add(cardsScroll, BorderLayout.CENTER);
-        menuArea.add(noticeCard, BorderLayout.SOUTH);
+        menuArea.add(noticePanel, BorderLayout.SOUTH);
 
         return menuArea;
     }
 
     private JPanel buildActiveOrderRail() {
         TonalCard rail = new TonalCard(AppTheme.RADIUS_XL, AppTheme.SURFACE_CONTAINER_LOW);
-        rail.setLayout(new BorderLayout(AppTheme.SPACE_3, AppTheme.SPACE_3));
-        rail.setPreferredSize(new Dimension(420, 0));
+        rail.setLayout(new BorderLayout(0, 0));
+        rail.setPreferredSize(new Dimension(340, 0));
+        rail.setBorder(BorderFactory.createEmptyBorder(
+            AppTheme.SPACE_4, AppTheme.SPACE_4, 0, AppTheme.SPACE_4));
 
+        // ── Rail body (scrollable) ──────────────────────────────────────────────
         JPanel railBody = new JPanel();
         railBody.setOpaque(false);
         railBody.setLayout(new BoxLayout(railBody, BoxLayout.Y_AXIS));
 
+        // Title
         JLabel railTitle = new JLabel("ACTIVE ORDER RAIL");
         railTitle.setFont(ThemeFonts.titleLg());
         railTitle.setForeground(AppTheme.TEXT_PRIMARY);
-        railTitle.setHorizontalAlignment(SwingConstants.LEFT);
         railTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel menuLabel = new JLabel("Search menu item");
-        menuLabel.setFont(ThemeFonts.labelMd());
+        // Search menu item (combo box)
+        JLabel menuLabel = new JLabel("SEARCH MENU ITEM");
+        menuLabel.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
         menuLabel.setForeground(AppTheme.TEXT_SECONDARY);
-        menuLabel.setHorizontalAlignment(SwingConstants.LEFT);
         menuLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel customLabel = new JLabel("Customization options");
-        customLabel.setFont(ThemeFonts.labelMd());
-        customLabel.setForeground(AppTheme.TEXT_SECONDARY);
-        customLabel.setHorizontalAlignment(SwingConstants.LEFT);
-        customLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        menuCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        menuCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, menuCombo.getPreferredSize().height));
+
+        // Customization options section
+        TonalCard customCard = new TonalCard(AppTheme.RADIUS_MD, AppTheme.SURFACE_CONTAINER);
+        customCard.setLayout(new BoxLayout(customCard, BoxLayout.Y_AXIS));
+        customCard.setBorder(BorderFactory.createEmptyBorder(
+            AppTheme.SPACE_3, AppTheme.SPACE_3, AppTheme.SPACE_3, AppTheme.SPACE_3));
+        customCard.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel customSectionLabel = new JLabel("CUSTOMIZATION OPTIONS");
+        customSectionLabel.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        customSectionLabel.setForeground(AppTheme.TEXT_SECONDARY);
+        customSectionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         customizationContainer.setLayout(new BoxLayout(customizationContainer, BoxLayout.Y_AXIS));
         customizationContainer.setOpaque(false);
         customizationContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
-        customizationScroll.setPreferredSize(new Dimension(0, 170));
+
+        customizationScroll.setPreferredSize(new Dimension(0, 160));
+        customizationScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
         customizationScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+        customizationScroll.setBorder(BorderFactory.createEmptyBorder());
+        customizationScroll.getViewport().setOpaque(false);
+        customizationScroll.setOpaque(false);
 
-        JLabel qtyLabel = new JLabel("Quantity");
-        qtyLabel.setFont(ThemeFonts.labelMd());
+        customCard.add(customSectionLabel);
+        customCard.add(Box.createVerticalStrut(AppTheme.SPACE_2));
+        customCard.add(customizationScroll);
+
+        // Quantity row
+        JLabel qtyLabel = new JLabel("QUANTITY");
+        qtyLabel.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
         qtyLabel.setForeground(AppTheme.TEXT_SECONDARY);
-        qtyLabel.setHorizontalAlignment(SwingConstants.LEFT);
-        qtyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        quantityField.setColumns(5);
+        styleQtyButton(decreaseQtyBtn);
+        styleQtyButton(increaseQtyBtn);
+
+        quantityField.setColumns(3);
         quantityField.setHorizontalAlignment(SwingConstants.CENTER);
-        quantityField.setPreferredSize(new Dimension(72, quantityField.getPreferredSize().height));
+        quantityField.setFont(ThemeFonts.bodyMd());
+        quantityField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(AppTheme.OUTLINE, 1),
+            BorderFactory.createEmptyBorder(2, 6, 2, 6)
+        ));
+        quantityField.setPreferredSize(new Dimension(44, 28));
+        quantityField.setMaximumSize(new Dimension(44, 28));
 
-        JPanel quantityPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, AppTheme.SPACE_2, 0));
-        quantityPanel.setOpaque(false);
-        quantityPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JPanel quantityRow = new JPanel(new BorderLayout());
+        quantityRow.setOpaque(false);
+        quantityRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        quantityRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
 
-        JLabel noteLabel = new JLabel("Additional note");
-        noteLabel.setFont(ThemeFonts.labelMd());
-        noteLabel.setForeground(AppTheme.TEXT_SECONDARY);
-        noteLabel.setHorizontalAlignment(SwingConstants.LEFT);
-        noteLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JPanel qtyControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, AppTheme.SPACE_1, 0));
+        qtyControls.setOpaque(false);
+        qtyControls.add(decreaseQtyBtn);
+        qtyControls.add(quantityField);
+        qtyControls.add(increaseQtyBtn);
 
+        quantityRow.add(qtyLabel, BorderLayout.WEST);
+        quantityRow.add(qtyControls, BorderLayout.EAST);
+
+        // Pricing section
+        JPanel pricingPanel = new JPanel();
+        pricingPanel.setOpaque(false);
+        pricingPanel.setLayout(new BoxLayout(pricingPanel, BoxLayout.Y_AXIS));
+        pricingPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        pricingPanel.add(buildPriceRow("UNIT PRICE", unitPriceValueLabel, false));
+        pricingPanel.add(Box.createVerticalStrut(AppTheme.SPACE_1));
+        pricingPanel.add(buildPriceRow("LINE TOTAL", lineTotalValueLabel, false));
+        pricingPanel.add(Box.createVerticalStrut(AppTheme.SPACE_2));
+
+        JSeparator priceSep = new JSeparator();
+        priceSep.setAlignmentX(Component.LEFT_ALIGNMENT);
+        priceSep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        priceSep.setForeground(AppTheme.OUTLINE);
+        pricingPanel.add(priceSep);
+        pricingPanel.add(Box.createVerticalStrut(AppTheme.SPACE_2));
+
+        subtotalValueLabel.setFont(ThemeFonts.bodyLg().deriveFont(Font.BOLD));
+        subtotalValueLabel.setForeground(new Color(0x1565C0));
+        pricingPanel.add(buildPriceRow("SUBTOTAL", subtotalValueLabel, true));
+
+        // Style pricing labels
+        unitPriceValueLabel.setFont(ThemeFonts.bodyMd());
+        unitPriceValueLabel.setForeground(AppTheme.TEXT_PRIMARY);
+        lineTotalValueLabel.setFont(ThemeFonts.bodyMd());
+        lineTotalValueLabel.setForeground(AppTheme.TEXT_PRIMARY);
+
+        // Hidden components still needed for logic
         noteArea.setFont(ThemeFonts.bodyMd());
         noteArea.setLineWrap(true);
         noteArea.setWrapStyleWord(true);
-        noteArea.setBorder(BorderFactory.createEmptyBorder(
-            AppTheme.SPACE_2,
-            AppTheme.SPACE_2,
-            AppTheme.SPACE_2,
-            AppTheme.SPACE_2
-        ));
-        noteScroll.setPreferredSize(new Dimension(0, 72));
-        noteScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        ThemeHelper.applyGhostButton(decreaseQtyBtn);
-        ThemeHelper.applyGhostButton(increaseQtyBtn);
-
-        quantityPanel.add(decreaseQtyBtn);
-        quantityPanel.add(quantityField);
-        quantityPanel.add(increaseQtyBtn);
 
         orderTable.setModel(orderModel);
         orderTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         ThemeHelper.applyTableStyle(orderTable);
         configureOrderRailTableColumns();
-        orderTable.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JScrollPane tableScroll = new JScrollPane(orderTable);
-        tableScroll.setPreferredSize(new Dimension(0, 170));
-        tableScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        tableScroll.setBorder(BorderFactory.createEmptyBorder());
-        tableScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Build rail body
+        railBody.add(railTitle);
+        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_4));
+        railBody.add(menuLabel);
+        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_1));
+        railBody.add(menuCombo);
+        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
+        railBody.add(customCard);
+        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
+        railBody.add(quantityRow);
+        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_4));
+        railBody.add(pricingPanel);
+        railBody.add(Box.createVerticalGlue());
 
-        JPanel actionButtons = new JPanel(new GridLayout(0, 2, AppTheme.SPACE_2, AppTheme.SPACE_2));
-        actionButtons.setOpaque(false);
-        actionButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // ── Bottom action bar ──────────────────────────────────────────────────
+        JPanel bottomBar = new JPanel();
+        bottomBar.setOpaque(false);
+        bottomBar.setLayout(new BoxLayout(bottomBar, BoxLayout.Y_AXIS));
+        bottomBar.setBorder(BorderFactory.createEmptyBorder(
+            AppTheme.SPACE_3, 0, AppTheme.SPACE_4, 0));
 
         ThemeHelper.applyGhostButton(newOrderBtn);
         ThemeHelper.applyGhostButton(removeBtn);
         ThemeHelper.applyPrimaryButton(addOrUpdateBtn);
 
+        newOrderBtn.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        removeBtn.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        addOrUpdateBtn.setFont(ThemeFonts.bodyMd().deriveFont(Font.BOLD));
+
+        JPanel actionButtons = new JPanel(new GridLayout(1, 2, AppTheme.SPACE_2, 0));
+        actionButtons.setOpaque(false);
+        actionButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
+        actionButtons.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         actionButtons.add(newOrderBtn);
         actionButtons.add(removeBtn);
 
         JPanel primaryActionPanel = new JPanel(new BorderLayout());
         primaryActionPanel.setOpaque(false);
         primaryActionPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        primaryActionPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
         primaryActionPanel.add(addOrUpdateBtn, BorderLayout.CENTER);
 
-        menuCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        railBody.add(railTitle);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
-        railBody.add(menuLabel);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_1));
-        railBody.add(menuCombo);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
-        railBody.add(customLabel);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_1));
-        railBody.add(customizationScroll);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
-        railBody.add(qtyLabel);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_1));
-        railBody.add(quantityPanel);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_2));
-        railBody.add(noteLabel);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_1));
-        railBody.add(noteScroll);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
-        railBody.add(tableScroll);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
-        railBody.add(actionButtons);
-        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_2));
-        railBody.add(primaryActionPanel);
+        bottomBar.add(actionButtons);
+        bottomBar.add(Box.createVerticalStrut(AppTheme.SPACE_2));
+        bottomBar.add(primaryActionPanel);
 
         rail.add(railBody, BorderLayout.CENTER);
+        rail.add(bottomBar, BorderLayout.SOUTH);
         return rail;
+    }
+
+    /** Build a two-column price row: label on left, value on right */
+    private JPanel buildPriceRow(String labelText, JLabel valueLabel, boolean bold) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+
+        JLabel lbl = new JLabel(labelText);
+        lbl.setFont(bold
+            ? ThemeFonts.bodyLg().deriveFont(Font.BOLD)
+            : ThemeFonts.labelMd());
+        lbl.setForeground(bold ? new Color(0x1565C0) : AppTheme.TEXT_SECONDARY);
+
+        row.add(lbl, BorderLayout.WEST);
+        row.add(valueLabel, BorderLayout.EAST);
+        return row;
+    }
+
+    /** Style -/+ quantity buttons to match the mockup (bordered, compact) */
+    private void styleQtyButton(JButton btn) {
+        btn.setFont(ThemeFonts.bodyMd().deriveFont(Font.BOLD));
+        btn.setBackground(AppTheme.SURFACE_CONTAINER_HIGH);
+        btn.setForeground(AppTheme.TEXT_PRIMARY);
+        btn.setOpaque(true);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(AppTheme.OUTLINE, 1),
+            BorderFactory.createEmptyBorder(2, 10, 2, 10)
+        ));
+        btn.setPreferredSize(new Dimension(32, 28));
+        btn.setMaximumSize(new Dimension(32, 28));
     }
 
     private void configureOrderRailTableColumns() {
@@ -646,25 +746,58 @@ public class OrdersPanel extends JPanel {
 
     private JPanel buildMenuCard(MenuItem item) {
         boolean selected = isSelectedMenuItem(item.getId());
-        TonalCard card = new TonalCard(
-            AppTheme.RADIUS_MD,
-            selected ? AppTheme.SURFACE_CONTAINER_LOW : AppTheme.SURFACE_CONTAINER_LOWEST
-        );
-        card.setLayout(new BorderLayout(AppTheme.SPACE_2, AppTheme.SPACE_2));
-        card.setBorder(BorderFactory.createEmptyBorder(
-            AppTheme.SPACE_3,
-            AppTheme.SPACE_3,
-            AppTheme.SPACE_3,
-            AppTheme.SPACE_3
+
+        // Outer card — white background, bottom border only
+        JPanel card = new JPanel(new BorderLayout(AppTheme.SPACE_3, 0));
+        card.setBackground(AppTheme.SURFACE_CONTAINER_LOWEST);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 1, 0, AppTheme.OUTLINE),
+            BorderFactory.createEmptyBorder(
+                AppTheme.SPACE_3, AppTheme.SPACE_3,
+                AppTheme.SPACE_3, AppTheme.SPACE_3)
         ));
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        if (selected) {
+            card.setBackground(new Color(0xEFF3FB));
+        }
 
+        // Square icon placeholder
+        JPanel iconBox = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(AppTheme.SURFACE_CONTAINER);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                g2.setColor(AppTheme.OUTLINE);
+                g2.setStroke(new java.awt.BasicStroke(1.2f));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                // Simple fork-and-knife icon lines
+                g2.setColor(AppTheme.TEXT_SECONDARY);
+                g2.setStroke(new java.awt.BasicStroke(1.5f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+                int cx = getWidth() / 2;
+                int cy = getHeight() / 2;
+                g2.drawLine(cx - 6, cy - 8, cx - 6, cy + 8);
+                g2.drawLine(cx - 6, cy - 4, cx - 2, cy - 4);
+                g2.drawLine(cx - 2, cy - 8, cx - 2, cy + 4);
+                g2.drawOval(cx - 2, cy + 2, 1, 3);
+                g2.drawLine(cx + 4, cy - 8, cx + 4, cy + 8);
+                g2.drawArc(cx + 1, cy - 8, 6, 6, 0, -180);
+                g2.dispose();
+            }
+        };
+        iconBox.setPreferredSize(new Dimension(40, 40));
+        iconBox.setMaximumSize(new Dimension(40, 40));
+        iconBox.setOpaque(false);
+
+        // Item info
         JPanel info = new JPanel();
         info.setOpaque(false);
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
 
         JLabel name = new JLabel(item.getName());
-        name.setFont(ThemeFonts.bodyLg());
+        name.setFont(ThemeFonts.bodyMd().deriveFont(Font.BOLD));
         name.setForeground(AppTheme.TEXT_PRIMARY);
 
         String descriptionText = item.getDescription() == null || item.getDescription().isBlank()
@@ -674,17 +807,32 @@ public class OrdersPanel extends JPanel {
         JLabel description = new JLabel(descriptionText);
         description.setFont(ThemeFonts.labelMd());
         description.setForeground(AppTheme.TEXT_SECONDARY);
+        description.putClientProperty("html.disable", Boolean.TRUE);
 
         JLabel price = new JLabel(formatCurrency(item.getBasePrice()));
-        price.setFont(ThemeFonts.labelMd());
-        price.setForeground(AppTheme.PRIMARY);
+        price.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        price.setForeground(AppTheme.SECONDARY);
 
         info.add(name);
+        info.add(Box.createVerticalStrut(2));
         info.add(description);
+        info.add(Box.createVerticalStrut(2));
         info.add(price);
 
-        JButton customizeBtn = new JButton("Customize");
-        ThemeHelper.applyGhostButton(customizeBtn);
+        // CUSTOMIZE button — uppercase, outline style
+        JButton customizeBtn = new JButton("CUSTOMIZE");
+        customizeBtn.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        customizeBtn.setBackground(AppTheme.SURFACE_CONTAINER_LOWEST);
+        customizeBtn.setForeground(AppTheme.TEXT_PRIMARY);
+        customizeBtn.setOpaque(true);
+        customizeBtn.setFocusPainted(false);
+        customizeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        customizeBtn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(AppTheme.OUTLINE_VARIANT, 1),
+            BorderFactory.createEmptyBorder(
+                AppTheme.SPACE_1, AppTheme.SPACE_3,
+                AppTheme.SPACE_1, AppTheme.SPACE_3)
+        ));
         customizeBtn.addActionListener(e -> selectMenuItemById(item.getId()));
 
         card.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -694,6 +842,7 @@ public class OrdersPanel extends JPanel {
             }
         });
 
+        card.add(iconBox, BorderLayout.WEST);
         card.add(info, BorderLayout.CENTER);
         card.add(customizeBtn, BorderLayout.EAST);
         return card;
@@ -876,10 +1025,35 @@ public class OrdersPanel extends JPanel {
     private void updatePreviewAndSubtotal() {
         MenuItem item = (MenuItem) menuCombo.getSelectedItem();
         if (item == null) {
+            unitPriceValueLabel.setText("$0.00");
+            lineTotalValueLabel.setText("$0.00");
+            subtotalValueLabel.setText("$0.00");
             return;
         }
 
-        // Keep this method as an update hook for existing flow without showing price summary in rail.
+        // Calculate unit price with selected customizations
+        java.math.BigDecimal unitPrice = item.getBasePrice();
+        for (CustomizationOption opt : getSelectedCustomizations()) {
+            unitPrice = unitPrice.add(opt.getPriceDelta());
+        }
+
+        int qty = parseQuantityOrDefault();
+        java.math.BigDecimal lineTotal = unitPrice.multiply(java.math.BigDecimal.valueOf(qty));
+
+        // Subtotal = sum of all items in current draft + this line
+        java.math.BigDecimal draftTotal = java.math.BigDecimal.ZERO;
+        for (com.oop.project.model.OrderItem oi : currentDraft.getItems()) {
+            draftTotal = draftTotal.add(oi.getLineTotal());
+        }
+        // If editing a row (row selected) the draft already includes it;
+        // if adding new, include lineTotal preview
+        java.math.BigDecimal subtotal = orderTable.getSelectedRow() >= 0
+            ? draftTotal
+            : draftTotal.add(lineTotal);
+
+        unitPriceValueLabel.setText(formatCurrency(unitPrice));
+        lineTotalValueLabel.setText(formatCurrency(lineTotal));
+        subtotalValueLabel.setText(formatCurrency(subtotal));
     }
 
     private void increaseQuantity() {
