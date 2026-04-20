@@ -57,11 +57,11 @@ if exist .env (
 echo.
 
 :: ──────────────────────────────────────────────
-:: Run application
+:: Compile and run application
 :: ──────────────────────────────────────────────
 echo Starting Restaurant POS...
 echo.
-call "!MVN_CMD!" exec:java
+call "!MVN_CMD!" clean compile exec:java
 echo.
 echo Application closed.
 pause
