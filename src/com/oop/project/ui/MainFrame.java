@@ -1,12 +1,24 @@
 package com.oop.project.ui;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 
 import com.oop.project.model.OrderDraft;
 import com.oop.project.model.User;
@@ -31,21 +43,21 @@ public class MainFrame extends JFrame {
 
     private final OrderDraft sharedOrderDraft;
 
+    private MenuPanel menuPanel;
     private OrdersPanel ordersPanel;
     private CartPanel cartPanel;
     private DashboardPanel dashboardPanel;
-    private MenuPanel menuPanel;
 
     private final JPanel contentPanel = new JPanel();
     private final CardLayout cardLayout = new CardLayout();
-
     private final Map<String, JButton> navButtons = new LinkedHashMap<>();
 
     private JLabel titleLabel;
     private JLabel subtitleLabel;
+    private JLabel sessionBadgeLabel;
+    private JPanel topbar;
 
     private String activeScreen = SCREEN_MENU;
-
     private boolean internalRefreshing = false;
 
     public MainFrame(User user) {
@@ -67,14 +79,17 @@ public class MainFrame extends JFrame {
         ordersPanel = new OrdersPanel(currentUser, sharedOrderDraft, this::refreshCart);
         cartPanel = new CartPanel(currentUser, sharedOrderDraft, this::onCartUpdated);
 
-        menuPanel = new MenuPanel(currentUser, () -> {
-            ordersPanel.reloadMenuItems();
-            ordersPanel.refresh();
-        });
+        menuPanel = new MenuPanel(
+            currentUser,
+            sharedOrderDraft,
+            () -> {
+                ordersPanel.reloadMenuItems();
+                ordersPanel.refresh();
+            },
+            this::refreshCart
+        );
 
-        if (currentUser.isManager()) {
-            dashboardPanel = new DashboardPanel();
-        }
+        dashboardPanel = currentUser.isManager() ? new DashboardPanel() : null;
     }
 
     private void initLayout() {
@@ -87,11 +102,14 @@ public class MainFrame extends JFrame {
 
     private JPanel buildSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(240, 0));
+        sidebar.setPreferredSize(new Dimension(190, 0));
         sidebar.setBackground(AppTheme.PRIMARY);
         sidebar.setBorder(BorderFactory.createEmptyBorder(
-                AppTheme.SPACE_4, AppTheme.SPACE_3,
-                AppTheme.SPACE_4, AppTheme.SPACE_3));
+            AppTheme.SPACE_4,
+            AppTheme.SPACE_3,
+            AppTheme.SPACE_4,
+            AppTheme.SPACE_3
+        ));
 
         JPanel top = new JPanel();
         top.setOpaque(false);
@@ -111,8 +129,11 @@ public class MainFrame extends JFrame {
         roleLabel.setForeground(AppTheme.ON_PRIMARY);
         roleLabel.setFont(AppTheme.FONT_LABEL);
         roleLabel.setBorder(BorderFactory.createEmptyBorder(
-                AppTheme.SPACE_1, AppTheme.SPACE_2,
-                AppTheme.SPACE_1, AppTheme.SPACE_2));
+            AppTheme.SPACE_1,
+            AppTheme.SPACE_2,
+            AppTheme.SPACE_1,
+            AppTheme.SPACE_2
+        ));
 
         top.add(appLabel);
         top.add(Box.createVerticalStrut(AppTheme.SPACE_2));
@@ -160,8 +181,11 @@ public class MainFrame extends JFrame {
     private JPanel buildMainArea() {
         JPanel main = new JPanel(new BorderLayout());
         main.setBorder(BorderFactory.createEmptyBorder(
-                AppTheme.SPACE_4, AppTheme.SPACE_4,
-                AppTheme.SPACE_4, AppTheme.SPACE_4));
+            AppTheme.SPACE_4,
+            AppTheme.SPACE_4,
+            AppTheme.SPACE_4,
+            AppTheme.SPACE_4
+        ));
 
         main.add(buildTopbar(), BorderLayout.NORTH);
         main.add(buildContentArea(), BorderLayout.CENTER);
@@ -170,15 +194,18 @@ public class MainFrame extends JFrame {
     }
 
     private JPanel buildTopbar() {
-        JPanel topbar = new JPanel(new BorderLayout());
+        topbar = new JPanel(new BorderLayout());
         topbar.setBackground(AppTheme.SURFACE_CONTAINER_LOWEST);
         topbar.setBorder(BorderFactory.createEmptyBorder(
-                AppTheme.SPACE_4, AppTheme.SPACE_4,
-                AppTheme.SPACE_4, AppTheme.SPACE_4));
+            AppTheme.SPACE_4,
+            AppTheme.SPACE_4,
+            AppTheme.SPACE_4,
+            AppTheme.SPACE_4
+        ));
 
-        JPanel textWrap = new JPanel();
-        textWrap.setOpaque(false);
-        textWrap.setLayout(new BoxLayout(textWrap, BoxLayout.Y_AXIS));
+        JPanel left = new JPanel();
+        left.setOpaque(false);
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
 
         titleLabel = new JLabel();
         titleLabel.setFont(AppTheme.FONT_DISPLAY_MEDIUM);
@@ -188,11 +215,25 @@ public class MainFrame extends JFrame {
         subtitleLabel.setFont(AppTheme.FONT_BODY_SECONDARY);
         subtitleLabel.setForeground(AppTheme.TEXT_SECONDARY);
 
-        textWrap.add(titleLabel);
-        textWrap.add(Box.createVerticalStrut(AppTheme.SPACE_1));
-        textWrap.add(subtitleLabel);
+        left.add(titleLabel);
+        left.add(Box.createVerticalStrut(AppTheme.SPACE_1));
+        left.add(subtitleLabel);
 
-        topbar.add(textWrap, BorderLayout.WEST);
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        right.setOpaque(false);
+
+        sessionBadgeLabel = new JLabel();
+        sessionBadgeLabel.setOpaque(true);
+        sessionBadgeLabel.setBackground(AppTheme.SURFACE_CONTAINER);
+        sessionBadgeLabel.setForeground(AppTheme.TEXT_PRIMARY);
+        sessionBadgeLabel.setFont(AppTheme.FONT_BUTTON);
+        sessionBadgeLabel.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+
+        right.add(sessionBadgeLabel);
+
+        topbar.add(left, BorderLayout.WEST);
+        topbar.add(right, BorderLayout.EAST);
+
         return topbar;
     }
 
@@ -219,19 +260,24 @@ public class MainFrame extends JFrame {
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setBorder(BorderFactory.createEmptyBorder(
-                AppTheme.SPACE_3, AppTheme.SPACE_4,
-                AppTheme.SPACE_3, AppTheme.SPACE_4));
+            AppTheme.SPACE_3,
+            AppTheme.SPACE_4,
+            AppTheme.SPACE_3,
+            AppTheme.SPACE_4
+        ));
         btn.setOpaque(true);
 
         btn.addActionListener(e -> showScreen(key));
 
         btn.addMouseListener(new MouseAdapter() {
+            @Override
             public void mouseEntered(MouseEvent e) {
                 if (!key.equals(activeScreen)) {
                     btn.setBackground(AppTheme.PRIMARY_CONTAINER);
                 }
             }
 
+            @Override
             public void mouseExited(MouseEvent e) {
                 updateNavButtonStyle(btn, key.equals(activeScreen));
             }
@@ -253,6 +299,8 @@ public class MainFrame extends JFrame {
 
         if (SCREEN_ORDERS.equals(key)) {
             ordersPanel.refresh();
+        } else if (SCREEN_CART.equals(key)) {
+            cartPanel.refresh();
         } else if (SCREEN_DASHBOARD.equals(key) && dashboardPanel != null) {
             dashboardPanel.refreshDashboardData();
         }
@@ -262,24 +310,47 @@ public class MainFrame extends JFrame {
     }
 
     private void updateTopbar() {
+        if (topbar != null) {
+            topbar.setVisible(true);
+        }
+
+        if (sessionBadgeLabel != null) {
+            sessionBadgeLabel.setText(currentUser.isManager() ? "Manager Session" : "Staff Session");
+        }
+
         switch (activeScreen) {
             case SCREEN_MENU:
                 titleLabel.setText("Menu");
-                subtitleLabel.setText("Browse items");
+                subtitleLabel.setText(
+                    currentUser.isManager()
+                        ? "Manage menu items, prices, and categories"
+                        : "Browse menu items and add them to the active draft order"
+                );
                 break;
+
             case SCREEN_CART:
                 titleLabel.setText("Cart");
-                subtitleLabel.setText("Review your cart");
+                subtitleLabel.setText("Review the current draft order");
                 break;
+
             case SCREEN_ORDERS:
                 titleLabel.setText("Orders");
-                subtitleLabel.setText("Manage orders");
+                subtitleLabel.setText("Manage and review orders");
                 break;
+
             case SCREEN_DASHBOARD:
                 titleLabel.setText("Dashboard");
                 subtitleLabel.setText("Analytics overview");
                 break;
+
+            default:
+                titleLabel.setText("Restaurant POS");
+                subtitleLabel.setText("");
+                break;
         }
+
+        revalidate();
+        repaint();
     }
 
     private void updateNavState() {
@@ -297,26 +368,29 @@ public class MainFrame extends JFrame {
     }
 
     private void refreshCart() {
-    if (internalRefreshing) {
-        return;
-    }
-
-    internalRefreshing = true;
-    try {
-        cartPanel.refresh();
-    } finally {
-        internalRefreshing = false;
-    }
-}
-        private void onCartUpdated() {
-            if (internalRefreshing) return;
-
-            ordersPanel.refresh();
-
-            if (SCREEN_DASHBOARD.equals(activeScreen) && dashboardPanel != null) {
-                dashboardPanel.refreshDashboardData();
-            }
+        if (internalRefreshing) {
+            return;
         }
+
+        internalRefreshing = true;
+        try {
+            cartPanel.refresh();
+        } finally {
+            internalRefreshing = false;
+        }
+    }
+
+    private void onCartUpdated() {
+        if (internalRefreshing) {
+            return;
+        }
+
+        ordersPanel.refresh();
+
+        if (SCREEN_DASHBOARD.equals(activeScreen) && dashboardPanel != null) {
+            dashboardPanel.refreshDashboardData();
+        }
+    }
 
     private void handleLogout() {
         authService.logout(currentUser);

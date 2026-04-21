@@ -53,7 +53,6 @@ public final class AppTheme {
     // font 
     public static final Font FONT_DISPLAY_LARGE = new Font("Segoe UI", Font.BOLD, 28);
     public static final Font FONT_DISPLAY_MEDIUM = new Font("Segoe UI", Font.BOLD, 22);
-
     public static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 18);
 
     public static final Font FONT_BODY_LARGE = new Font("Segoe UI", Font.PLAIN, 14);
