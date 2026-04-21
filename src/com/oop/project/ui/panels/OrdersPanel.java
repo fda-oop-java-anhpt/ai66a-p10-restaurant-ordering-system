@@ -23,7 +23,9 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
@@ -900,16 +902,27 @@ public class OrdersPanel extends JPanel {
         }
 
         List<CustomizationOption> selectedCustomizations = orderService.copyOfSelected(getSelectedCustomizations());
+        String normalizedNote = normalizeNote(noteArea.getText());
         int selectedRow = orderTable.getSelectedRow();
 
         if (selectedRow >= 0) {
             orderService.replaceItem(currentDraft, selectedRow, selectedItem, selectedCustomizations, quantity);
-            updateNoteAt(selectedRow, noteArea.getText());
+            updateNoteAt(selectedRow, normalizedNote);
             showSystemNotice("Item updated in active order.");
         } else {
-            orderService.addItem(currentDraft, selectedItem, selectedCustomizations, quantity);
-            draftNotes.add(normalizeNote(noteArea.getText()));
-            showSystemNotice("Item added to active order.");
+            int existingIndex = findMatchingItemIndex(selectedItem, selectedCustomizations, normalizedNote);
+            if (existingIndex >= 0) {
+                OrderItem existingItem = currentDraft.getItems().get(existingIndex);
+                int mergedQuantity = existingItem.getQuantity() + quantity;
+                orderService.replaceItem(currentDraft, existingIndex,
+                    existingItem.getMenuItem(), existingItem.getCustomizations(), mergedQuantity);
+                updateNoteAt(existingIndex, normalizedNote);
+                showSystemNotice("Item merged into cart and quantity updated.");
+            } else {
+                orderService.addItem(currentDraft, selectedItem, selectedCustomizations, quantity);
+                draftNotes.add(normalizedNote);
+                showSystemNotice("Item added to active order.");
+            }
             noteArea.setText("");
         }
 
@@ -1254,6 +1267,38 @@ public class OrdersPanel extends JPanel {
         for (AbstractButton button : customizationButtons.values()) {
             button.setSelected(false);
         }
+    }
+
+    private int findMatchingItemIndex(MenuItem targetItem, List<CustomizationOption> targetCustomizations, String targetNote) {
+        List<OrderItem> items = currentDraft.getItems();
+        String targetCustomizationKey = buildCustomizationKey(targetCustomizations);
+
+        for (int i = 0; i < items.size(); i++) {
+            OrderItem existing = items.get(i);
+            if (existing.getMenuItem().getId() != targetItem.getId()) {
+                continue;
+            }
+
+            String existingCustomizationKey = buildCustomizationKey(existing.getCustomizations());
+            if (!Objects.equals(existingCustomizationKey, targetCustomizationKey)) {
+                continue;
+            }
+
+            String existingNote = getNoteAt(i);
+            if (Objects.equals(existingNote, targetNote)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private String buildCustomizationKey(List<CustomizationOption> customizations) {
+        return customizations.stream()
+            .map(CustomizationOption::getId)
+            .sorted()
+            .map(String::valueOf)
+            .collect(Collectors.joining(","));
     }
 
     private void updateSelectedNoteIfPossible() {
