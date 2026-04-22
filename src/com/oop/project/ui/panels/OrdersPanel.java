@@ -125,8 +125,6 @@ public class OrdersPanel extends JPanel {
     private final List<MenuItem> visibleMenuItems = new ArrayList<>();
     private final Map<Integer, MenuCategory> categoriesById = new LinkedHashMap<>();
     private final ButtonGroup categoryGroup = new ButtonGroup();
-    private final List<String> draftNotes = new ArrayList<>();
-
     private Integer activeCategoryId = null;
     private boolean applyingSelection = false;
 
@@ -489,8 +487,21 @@ public class OrdersPanel extends JPanel {
         bottomBar.add(Box.createVerticalStrut(AppTheme.SPACE_2));
         bottomBar.add(primaryActionPanel);
 
-        rail.add(railBody, BorderLayout.CENTER);
-        rail.add(bottomBar, BorderLayout.SOUTH);
+        JPanel railContent = new JPanel();
+        railContent.setOpaque(false);
+        railContent.setLayout(new BoxLayout(railContent, BoxLayout.Y_AXIS));
+        railContent.add(railBody);
+        railContent.add(bottomBar);
+
+        JScrollPane railScroll = new JScrollPane(railContent);
+        railScroll.setBorder(BorderFactory.createEmptyBorder());
+        railScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        railScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        railScroll.getVerticalScrollBar().setUnitIncrement(16);
+        railScroll.getViewport().setOpaque(false);
+        railScroll.setOpaque(false);
+
+        rail.add(railScroll, BorderLayout.CENTER);
         return rail;
     }
 
@@ -938,7 +949,6 @@ public class OrdersPanel extends JPanel {
         }
 
         currentDraft.clearItems();
-        draftNotes.clear();
         orderModel.setRowCount(0);
         orderTable.clearSelection();
         addOrUpdateBtn.setText("Add Item to Order");
@@ -972,12 +982,11 @@ public class OrdersPanel extends JPanel {
         }
 
         List<CustomizationOption> selectedCustomizations = orderService.copyOfSelected(getSelectedCustomizations());
-        String normalizedNote = normalizeNote(noteArea.getText());
+        String normalizedNote = noteArea.getText() == null ? "" : noteArea.getText().trim();
         int selectedRow = orderTable.getSelectedRow();
 
         if (selectedRow >= 0) {
-            orderService.replaceItem(currentDraft, selectedRow, selectedItem, selectedCustomizations, quantity);
-            updateNoteAt(selectedRow, normalizedNote);
+            orderService.replaceItem(currentDraft, selectedRow, selectedItem, selectedCustomizations, quantity, normalizedNote);
             showSystemNotice("Item updated in active order.");
         } else {
             int existingIndex = findMatchingItemIndex(selectedItem, selectedCustomizations, normalizedNote);
@@ -985,12 +994,10 @@ public class OrdersPanel extends JPanel {
                 OrderItem existingItem = currentDraft.getItems().get(existingIndex);
                 int mergedQuantity = existingItem.getQuantity() + quantity;
                 orderService.replaceItem(currentDraft, existingIndex,
-                    existingItem.getMenuItem(), existingItem.getCustomizations(), mergedQuantity);
-                updateNoteAt(existingIndex, normalizedNote);
+                    existingItem.getMenuItem(), existingItem.getCustomizations(), mergedQuantity, existingItem.getNote());
                 showSystemNotice("Item merged into cart and quantity updated.");
             } else {
-                orderService.addItem(currentDraft, selectedItem, selectedCustomizations, quantity);
-                draftNotes.add(normalizedNote);
+                orderService.addItem(currentDraft, selectedItem, selectedCustomizations, quantity, normalizedNote);
                 showSystemNotice("Item added to active order.");
             }
             noteArea.setText("");
@@ -1011,9 +1018,6 @@ public class OrdersPanel extends JPanel {
         }
 
         orderService.removeItem(currentDraft, selectedRow);
-        if (selectedRow >= 0 && selectedRow < draftNotes.size()) {
-            draftNotes.remove(selectedRow);
-        }
         refreshTable();
         addOrUpdateBtn.setText("Add Item to Order");
         updatePreviewAndSubtotal();
@@ -1028,11 +1032,10 @@ public class OrdersPanel extends JPanel {
 
         orderModel.setRowCount(0);
         List<OrderItem> items = currentDraft.getItems();
-        ensureNotesSize(items.size());
         for (int i = 0; i < items.size(); i++) {
             OrderItem item = items.get(i);
             String customizationText = item.getCustomizationSummary();
-            String note = draftNotes.get(i);
+            String note = item.getNote() == null ? "" : item.getNote().trim();
             if (!note.isBlank()) {
                 customizationText = customizationText + " | Note: " + note;
             }
@@ -1064,7 +1067,7 @@ public class OrdersPanel extends JPanel {
             loadCustomizationsForSelectedItem();
             selectCustomizations(selectedOrderItem.getCustomizations());
             quantityField.setText(String.valueOf(selectedOrderItem.getQuantity()));
-            noteArea.setText(getNoteAt(selectedRow));
+            noteArea.setText(selectedOrderItem.getNote());
         } finally {
             applyingSelection = false;
         }
@@ -1099,7 +1102,8 @@ public class OrdersPanel extends JPanel {
         }
 
         List<CustomizationOption> selectedCustomizations = new ArrayList<>(getSelectedCustomizations());
-        orderService.replaceItem(currentDraft, selectedRow, selectedItem, selectedCustomizations, quantity);
+        String normalizedNote = noteArea.getText() == null ? "" : noteArea.getText().trim();
+        orderService.replaceItem(currentDraft, selectedRow, selectedItem, selectedCustomizations, quantity, normalizedNote);
         refreshTable();
         orderTable.setRowSelectionInterval(selectedRow, selectedRow);
         updatePreviewAndSubtotal();
@@ -1348,7 +1352,7 @@ public class OrdersPanel extends JPanel {
                 continue;
             }
 
-            String existingNote = getNoteAt(i);
+            String existingNote = existing.getNote() == null ? "" : existing.getNote().trim();
             if (Objects.equals(existingNote, targetNote)) {
                 return i;
             }
@@ -1375,39 +1379,11 @@ public class OrdersPanel extends JPanel {
             return;
         }
 
-        updateNoteAt(selectedRow, noteArea.getText());
+        currentDraft.getItems().get(selectedRow).setNote(noteArea.getText());
         refreshTable();
         if (selectedRow < orderModel.getRowCount()) {
             orderTable.setRowSelectionInterval(selectedRow, selectedRow);
         }
-    }
-
-    private void ensureNotesSize(int targetSize) {
-        while (draftNotes.size() < targetSize) {
-            draftNotes.add("");
-        }
-        while (draftNotes.size() > targetSize) {
-            draftNotes.remove(draftNotes.size() - 1);
-        }
-    }
-
-    private String normalizeNote(String note) {
-        return note == null ? "" : note.trim();
-    }
-
-    private void updateNoteAt(int index, String note) {
-        ensureNotesSize(currentDraft.getItems().size());
-        if (index >= 0 && index < draftNotes.size()) {
-            draftNotes.set(index, normalizeNote(note));
-        }
-    }
-
-    private String getNoteAt(int index) {
-        ensureNotesSize(currentDraft.getItems().size());
-        if (index < 0 || index >= draftNotes.size()) {
-            return "";
-        }
-        return draftNotes.get(index);
     }
 
     private void showSystemNotice(String message) {

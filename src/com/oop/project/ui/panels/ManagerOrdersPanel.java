@@ -429,14 +429,19 @@ public class ManagerOrdersPanel extends JPanel {
     }
 
     private String summarizeCustomizations(OrderItem orderItem) {
-        if (orderItem.getCustomizations().isEmpty()) {
-            return "-";
-        }
-
-        return orderItem.getCustomizations()
+        String customizationSummary = orderItem.getCustomizations().isEmpty()
+            ? "-"
+            : orderItem.getCustomizations()
             .stream()
             .map(CustomizationOption::getName)
             .collect(Collectors.joining(", "));
+
+        String note = orderItem.getNote() == null ? "" : orderItem.getNote().trim();
+        if (!note.isBlank()) {
+            return customizationSummary + " | Note: " + note;
+        }
+
+        return customizationSummary;
     }
 
     private String formatCustomizationOption(CustomizationOption option) {
