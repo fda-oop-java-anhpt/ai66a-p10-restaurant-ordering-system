@@ -206,11 +206,31 @@ public class OrdersPanel extends JPanel {
         categoryTabsPanel.setOpaque(false);
         categoryTabsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        JPanel searchBar = new JPanel(new BorderLayout(AppTheme.SPACE_2, 0));
+        searchBar.setOpaque(false);
+        searchBar.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel searchLabel = new JLabel("Search menu:");
+        searchLabel.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        searchLabel.setForeground(AppTheme.TEXT_SECONDARY);
+
+        searchField.setFont(ThemeFonts.bodyMd());
+        searchField.setToolTipText("Type menu item name to filter quickly");
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(AppTheme.OUTLINE, 1),
+            BorderFactory.createEmptyBorder(AppTheme.SPACE_1, AppTheme.SPACE_2, AppTheme.SPACE_1, AppTheme.SPACE_2)
+        ));
+
+        searchBar.add(searchLabel, BorderLayout.WEST);
+        searchBar.add(searchField, BorderLayout.CENTER);
+
         header.add(title);
         header.add(Box.createVerticalStrut(AppTheme.SPACE_2));
         header.add(titleSeparator);
         header.add(Box.createVerticalStrut(AppTheme.SPACE_2));
         header.add(categoryTabsPanel);
+        header.add(Box.createVerticalStrut(AppTheme.SPACE_2));
+        header.add(searchBar);
 
         menuCardsPanel.setOpaque(false);
         menuCardsPanel.setLayout(new BoxLayout(menuCardsPanel, BoxLayout.Y_AXIS));
@@ -288,7 +308,7 @@ public class OrdersPanel extends JPanel {
         railTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Search menu item (combo box)
-        JLabel menuLabel = new JLabel("SEARCH MENU ITEM");
+        JLabel menuLabel = new JLabel("SELECT MENU ITEM");
         menuLabel.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
         menuLabel.setForeground(AppTheme.TEXT_SECONDARY);
         menuLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -355,6 +375,11 @@ public class OrdersPanel extends JPanel {
         quantityRow.add(qtyLabel, BorderLayout.WEST);
         quantityRow.add(qtyControls, BorderLayout.EAST);
 
+        JLabel noteLabel = new JLabel("NOTE");
+        noteLabel.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        noteLabel.setForeground(AppTheme.TEXT_SECONDARY);
+        noteLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         // Pricing section
         JPanel pricingPanel = new JPanel();
         pricingPanel.setOpaque(false);
@@ -387,11 +412,28 @@ public class OrdersPanel extends JPanel {
         noteArea.setFont(ThemeFonts.bodyMd());
         noteArea.setLineWrap(true);
         noteArea.setWrapStyleWord(true);
+        noteArea.setBorder(BorderFactory.createEmptyBorder(AppTheme.SPACE_1, AppTheme.SPACE_1, AppTheme.SPACE_1, AppTheme.SPACE_1));
+
+        noteScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+        noteScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 68));
+        noteScroll.setPreferredSize(new Dimension(0, 68));
+        noteScroll.setBorder(BorderFactory.createLineBorder(AppTheme.OUTLINE, 1));
+
+        JLabel activeOrderLabel = new JLabel("ACTIVE ORDER ITEMS");
+        activeOrderLabel.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        activeOrderLabel.setForeground(AppTheme.TEXT_SECONDARY);
+        activeOrderLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         orderTable.setModel(orderModel);
         orderTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         ThemeHelper.applyTableStyle(orderTable);
         configureOrderRailTableColumns();
+
+        JScrollPane orderTableScroll = new JScrollPane(orderTable);
+        orderTableScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+        orderTableScroll.setBorder(BorderFactory.createLineBorder(AppTheme.OUTLINE, 1));
+        orderTableScroll.setPreferredSize(new Dimension(0, 150));
+        orderTableScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
 
         // Build rail body
         railBody.add(railTitle);
@@ -403,8 +445,16 @@ public class OrdersPanel extends JPanel {
         railBody.add(customCard);
         railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
         railBody.add(quantityRow);
+        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
+        railBody.add(noteLabel);
+        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_1));
+        railBody.add(noteScroll);
         railBody.add(Box.createVerticalStrut(AppTheme.SPACE_4));
         railBody.add(pricingPanel);
+        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_3));
+        railBody.add(activeOrderLabel);
+        railBody.add(Box.createVerticalStrut(AppTheme.SPACE_1));
+        railBody.add(orderTableScroll);
         railBody.add(Box.createVerticalGlue());
 
         // ── Bottom action bar ──────────────────────────────────────────────────
@@ -719,9 +769,15 @@ public class OrdersPanel extends JPanel {
             if (activeCategoryId != null && item.getCategoryId() != activeCategoryId.intValue()) {
                 continue;
             }
-            if (!keyword.isEmpty() && !item.getName().toLowerCase().contains(keyword)) {
-                continue;
+
+            if (!keyword.isEmpty()) {
+                String itemName = item.getName() == null ? "" : item.getName().toLowerCase();
+                String itemDescription = item.getDescription() == null ? "" : item.getDescription().toLowerCase();
+                if (!itemName.contains(keyword) && !itemDescription.contains(keyword)) {
+                    continue;
+                }
             }
+
             visibleMenuItems.add(item);
         }
 
@@ -867,6 +923,20 @@ public class OrdersPanel extends JPanel {
     }
 
     private void startNewOrder() {
+        if (!currentDraft.getItems().isEmpty()) {
+            int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Create a new draft now? Current draft items will be cleared. Submitted orders are not affected.",
+                "New Order",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+
+            if (confirm != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
         currentDraft.clearItems();
         draftNotes.clear();
         orderModel.setRowCount(0);
@@ -876,7 +946,7 @@ public class OrdersPanel extends JPanel {
         noteArea.setText("");
         clearCustomizationSelection();
         updatePreviewAndSubtotal();
-        showSystemNotice("Started a new order draft.");
+        showSystemNotice("Started a new order draft. Previous submitted orders remain in history.");
         if (onUpdate != null) {
             onUpdate.run();
         }
@@ -1036,11 +1106,16 @@ public class OrdersPanel extends JPanel {
     }
 
     private void updatePreviewAndSubtotal() {
+        java.math.BigDecimal draftTotal = java.math.BigDecimal.ZERO;
+        for (com.oop.project.model.OrderItem oi : currentDraft.getItems()) {
+            draftTotal = draftTotal.add(oi.getLineTotal());
+        }
+
         MenuItem item = (MenuItem) menuCombo.getSelectedItem();
         if (item == null) {
             unitPriceValueLabel.setText("$0.00");
             lineTotalValueLabel.setText("$0.00");
-            subtotalValueLabel.setText("$0.00");
+            subtotalValueLabel.setText(formatCurrency(draftTotal));
             return;
         }
 
@@ -1053,20 +1128,9 @@ public class OrdersPanel extends JPanel {
         int qty = parseQuantityOrDefault();
         java.math.BigDecimal lineTotal = unitPrice.multiply(java.math.BigDecimal.valueOf(qty));
 
-        // Subtotal = sum of all items in current draft + this line
-        java.math.BigDecimal draftTotal = java.math.BigDecimal.ZERO;
-        for (com.oop.project.model.OrderItem oi : currentDraft.getItems()) {
-            draftTotal = draftTotal.add(oi.getLineTotal());
-        }
-        // If editing a row (row selected) the draft already includes it;
-        // if adding new, include lineTotal preview
-        java.math.BigDecimal subtotal = orderTable.getSelectedRow() >= 0
-            ? draftTotal
-            : draftTotal.add(lineTotal);
-
         unitPriceValueLabel.setText(formatCurrency(unitPrice));
         lineTotalValueLabel.setText(formatCurrency(lineTotal));
-        subtotalValueLabel.setText(formatCurrency(subtotal));
+        subtotalValueLabel.setText(formatCurrency(draftTotal));
     }
 
     private void increaseQuantity() {
