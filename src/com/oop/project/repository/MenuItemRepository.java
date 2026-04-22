@@ -102,6 +102,42 @@ public class MenuItemRepository {
         }
     }
 
+    public void updateDetails(int menuItemId, String name, String description, BigDecimal newPrice, int categoryId) {
+        String sql = """
+            UPDATE menu_items
+            SET name = ?, description = ?, base_price = ?, category_id = ?
+            WHERE id = ?
+        """;
+
+        try (Connection conn = DBConnection.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, name);
+            ps.setString(2, description);
+            ps.setBigDecimal(3, newPrice);
+            ps.setInt(4, categoryId);
+            ps.setInt(5, menuItemId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot update menu item details", e);
+        }
+    }
+
+    public boolean isUsedInOrders(int menuItemId) {
+        String sql = "SELECT 1 FROM order_items WHERE menu_item_id = ? LIMIT 1";
+
+        try (Connection conn = DBConnection.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, menuItemId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot check menu item usage", e);
+        }
+    }
+
     public boolean deleteById(int menuItemId) {
         String sql = "DELETE FROM menu_items WHERE id = ?";
         try (Connection conn = DBConnection.getConnection();
