@@ -8,7 +8,9 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
+import javax.swing.JTextArea;
 import javax.swing.SpinnerNumberModel;
 
 import com.oop.project.model.OrderItem;
@@ -16,6 +18,7 @@ import com.oop.project.model.OrderItem;
 public class EditItemDialog extends JDialog {
     private final OrderItem orderItem;
     private JSpinner quantitySpinner;
+    private JTextArea noteArea;
     private boolean confirmed = false;
 
     public EditItemDialog(JFrame parent, OrderItem item) {
@@ -23,7 +26,7 @@ public class EditItemDialog extends JDialog {
         this.orderItem = item;
         
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(400, 300);
+        setSize(420, 340);
         setLocationRelativeTo(parent);
         
         buildDialog();
@@ -43,6 +46,18 @@ public class EditItemDialog extends JDialog {
         ));
         qtyPanel.add(quantitySpinner);
         itemPanel.add(qtyPanel);
+
+        JPanel notePanel = new JPanel(new GridLayout(0, 1, 0, 6));
+        notePanel.add(new JLabel("Note:"));
+
+        noteArea = new JTextArea(4, 26);
+        noteArea.setLineWrap(true);
+        noteArea.setWrapStyleWord(true);
+        noteArea.setText(orderItem.getNote());
+
+        JScrollPane noteScroll = new JScrollPane(noteArea);
+        notePanel.add(noteScroll);
+        itemPanel.add(notePanel);
 
         mainPanel.add(itemPanel);
 
@@ -70,5 +85,9 @@ public class EditItemDialog extends JDialog {
 
     public int getQuantity() {
         return (Integer) quantitySpinner.getValue();
+    }
+
+    public String getNote() {
+        return noteArea == null ? "" : noteArea.getText();
     }
 }

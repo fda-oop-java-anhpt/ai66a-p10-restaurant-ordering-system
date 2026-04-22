@@ -146,6 +146,11 @@ public class OrderLineCard extends JPanel {
         if (item.getCustomizations().isEmpty()) {
             row.add(buildChip("NO CUSTOMIZATION"));
         }
+
+        String note = item.getNote() == null ? "" : item.getNote().trim();
+        if (!note.isBlank()) {
+            row.add(buildChip(("NOTE: " + note).toUpperCase()));
+        }
         return row;
     }
 

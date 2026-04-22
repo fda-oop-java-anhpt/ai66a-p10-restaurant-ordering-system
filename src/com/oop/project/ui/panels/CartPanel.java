@@ -134,6 +134,8 @@ public class CartPanel extends JPanel {
         scrollPane.setBorder(BorderFactory.createLineBorder(DIVIDER_COLOR, 1));
         scrollPane.getViewport().setBackground(Color.WHITE);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         column.add(headerPanel,  BorderLayout.NORTH);
         column.add(scrollPane,   BorderLayout.CENTER);
@@ -384,7 +386,7 @@ public class CartPanel extends JPanel {
         dialog.setVisible(true);
         if (dialog.isConfirmed()) {
             orderService.replaceItem(currentDraft, index,
-                item.getMenuItem(), item.getCustomizations(), dialog.getQuantity());
+                item.getMenuItem(), item.getCustomizations(), dialog.getQuantity(), dialog.getNote());
             refresh();
         }
     }
@@ -399,7 +401,7 @@ public class CartPanel extends JPanel {
         if (index < 0 || index >= currentDraft.getItems().size()) return;
         OrderItem item = currentDraft.getItems().get(index);
         orderService.replaceItem(currentDraft, index,
-            item.getMenuItem(), item.getCustomizations(), item.getQuantity() + 1);
+            item.getMenuItem(), item.getCustomizations(), item.getQuantity() + 1, item.getNote());
         refresh();
     }
 
@@ -414,7 +416,7 @@ public class CartPanel extends JPanel {
             return;
         }
         orderService.replaceItem(currentDraft, index,
-            item.getMenuItem(), item.getCustomizations(), item.getQuantity() - 1);
+            item.getMenuItem(), item.getCustomizations(), item.getQuantity() - 1, item.getNote());
         refresh();
     }
 
@@ -479,7 +481,13 @@ public class CartPanel extends JPanel {
                 i, item,
                 this::increaseQuantity, this::decreaseQuantity,
                 this::editItemAt,       this::removeItemAt);
+
+            Dimension preferred = lineCard.getPreferredSize();
+            lineCard.setPreferredSize(new Dimension(preferred.width, preferred.height));
+            lineCard.setMinimumSize(new Dimension(0, preferred.height));
+            lineCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, preferred.height));
             lineCard.setAlignmentX(LEFT_ALIGNMENT);
+
             itemsListPanel.add(lineCard);
         }
     }

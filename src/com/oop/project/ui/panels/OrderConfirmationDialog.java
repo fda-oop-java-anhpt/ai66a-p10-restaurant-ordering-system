@@ -238,7 +238,13 @@ public class OrderConfirmationDialog extends JDialog {
         for (OrderItem item : orderDraft.getItems()) {
             String name = item.getMenuItem().getName();
             String custom = item.getCustomizationSummary();
-            String desc = (custom == null || custom.isBlank()) ? name : name + " – " + custom;
+            String desc = (custom == null || custom.isBlank() || "-".equals(custom))
+                ? name
+                : name + " – " + custom;
+            String note = item.getNote() == null ? "" : item.getNote().trim();
+            if (!note.isBlank()) {
+                desc = desc + " | Note: " + note;
+            }
             model.addRow(new Object[]{
                 desc,
                 item.getQuantity(),

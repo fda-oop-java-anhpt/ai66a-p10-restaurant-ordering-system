@@ -54,8 +54,12 @@ public class ReceiptPrinter {
         for (OrderItem item : draft.getItems()) {
             String itemName = item.getMenuItem().getName();
             String customizations = item.getCustomizationSummary();
-            if (!customizations.isEmpty()) {
+            if (customizations != null && !customizations.isBlank() && !"-".equals(customizations)) {
                 itemName = itemName + " (" + customizations + ")";
+            }
+            String note = item.getNote() == null ? "" : item.getNote().trim();
+            if (!note.isBlank()) {
+                itemName = itemName + " [Note: " + note + "]";
             }
 
             List<String> itemNameLines = wrapText(itemName, ITEM_COL_WIDTH);
