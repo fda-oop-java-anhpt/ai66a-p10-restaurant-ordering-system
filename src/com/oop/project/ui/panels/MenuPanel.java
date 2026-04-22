@@ -1,6 +1,7 @@
 package com.oop.project.ui.panels;
 
 import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -18,17 +19,25 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
+import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import javax.swing.JLayeredPane;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -39,6 +48,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import com.oop.project.model.MenuCategory;
 import com.oop.project.model.MenuItem;
@@ -437,8 +447,16 @@ public class MenuPanel extends JPanel {
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
 
-        JLabel imageLabel = new JLabel(loadMenuItemImage(item, 185, 125));
-        imageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        ImageIcon imageIcon = loadMenuItemImage(item, 185, 125);
+
+        JComponent imageSection;
+        if (isManagerMode()) {
+            imageSection = buildImageUploadOverlay(item, imageIcon, 185, 125);
+        } else {
+            JLabel lbl = new JLabel(imageIcon);
+            lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+            imageSection = lbl;
+        }
 
         JLabel name = new JLabel("<html><div style='width:118px;'>" + escapeHtml(item.getName()) + "</div></html>");
         name.setForeground(textColor);
@@ -463,7 +481,7 @@ public class MenuPanel extends JPanel {
         desc.setFont(bodyFont(11f));
         desc.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        content.add(imageLabel);
+        content.add(imageSection);
         content.add(Box.createVerticalStrut(10));
         content.add(titleRow);
         content.add(Box.createVerticalStrut(6));
@@ -482,7 +500,6 @@ public class MenuPanel extends JPanel {
 
             card.addMouseListener(selectListener);
             content.addMouseListener(selectListener);
-            imageLabel.addMouseListener(selectListener);
             titleRow.addMouseListener(selectListener);
             name.addMouseListener(selectListener);
             price.addMouseListener(selectListener);
@@ -504,6 +521,189 @@ public class MenuPanel extends JPanel {
         }
 
         return card;
+    }
+
+    /**
+     * Creates an image layer with a hover overlay and upload button for manager mode.
+     */
+    private JLayeredPane buildImageUploadOverlay(MenuItem item, ImageIcon imageIcon, int w, int h) {
+        JLayeredPane layered = new JLayeredPane();
+        layered.setPreferredSize(new Dimension(w, h));
+        layered.setMinimumSize(new Dimension(w, h));
+        layered.setMaximumSize(new Dimension(w, h));
+        layered.setAlignmentX(Component.LEFT_ALIGNMENT);
+        layered.setOpaque(false);
+
+        JLabel imageLabel = new JLabel(imageIcon);
+        imageLabel.setBounds(0, 0, w, h);
+        layered.add(imageLabel, JLayeredPane.DEFAULT_LAYER);
+
+        JPanel overlay = new JPanel(new java.awt.GridBagLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(0, 0, 0, 120));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
+                g2.dispose();
+            }
+        };
+        overlay.setOpaque(false);
+        overlay.setBounds(0, 0, w, h);
+        overlay.setVisible(false);
+        overlay.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        JButton uploadBtn = new JButton(buildCameraIcon()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(255, 255, 255, 200));
+                g2.fillOval(0, 0, getWidth(), getHeight());
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        uploadBtn.setPreferredSize(new Dimension(40, 40));
+        uploadBtn.setMinimumSize(new Dimension(40, 40));
+        uploadBtn.setMaximumSize(new Dimension(40, 40));
+        uploadBtn.setOpaque(false);
+        uploadBtn.setContentAreaFilled(false);
+        uploadBtn.setBorderPainted(false);
+        uploadBtn.setFocusable(false);
+        uploadBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        uploadBtn.setToolTipText("Upload ảnh cho " + item.getName());
+
+        overlay.add(uploadBtn);
+        layered.add(overlay, JLayeredPane.PALETTE_LAYER);
+
+        MouseAdapter hoverAdapter = new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                overlay.setVisible(true);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                java.awt.Point p = javax.swing.SwingUtilities.convertPoint(
+                    (Component) e.getSource(), e.getPoint(), layered
+                );
+                if (!layered.contains(p)) {
+                    overlay.setVisible(false);
+                }
+            }
+        };
+
+        layered.addMouseListener(hoverAdapter);
+        overlay.addMouseListener(hoverAdapter);
+
+        uploadBtn.addActionListener(e -> handleImageUpload(item, imageLabel, w, h));
+
+        overlay.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                selectedItem = item;
+                applyFilter();
+            }
+        });
+
+        return layered;
+    }
+
+    /**
+     * Opens a file chooser, stores selected image as images/<item_name>.jpg and updates the card image.
+     */
+    private void handleImageUpload(MenuItem item, JLabel imageLabel, int w, int h) {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Chọn ảnh cho " + item.getName());
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(false);
+        chooser.addChoosableFileFilter(new FileNameExtensionFilter(
+            "Image files (jpg, jpeg, png)", "jpg", "jpeg", "png"
+        ));
+
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File sourceFile = chooser.getSelectedFile();
+        if (sourceFile == null || !sourceFile.exists()) {
+            return;
+        }
+
+        File imagesDir = new File("images");
+        if (!imagesDir.exists()) {
+            imagesDir.mkdirs();
+        }
+
+        String baseName = item.getName().trim().toLowerCase().replaceAll("\\s+", "_");
+        File destFile = new File(imagesDir, baseName + ".jpg");
+
+        try {
+            BufferedImage srcImg = ImageIO.read(sourceFile);
+            if (srcImg == null) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Không đọc được file ảnh. Vui lòng chọn file jpg/png hợp lệ.",
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE
+                );
+                return;
+            }
+
+            BufferedImage rgbImg = new BufferedImage(
+                srcImg.getWidth(), srcImg.getHeight(), BufferedImage.TYPE_INT_RGB
+            );
+            Graphics2D g2 = rgbImg.createGraphics();
+            g2.setColor(Color.WHITE);
+            g2.fillRect(0, 0, rgbImg.getWidth(), rgbImg.getHeight());
+            g2.drawImage(srcImg, 0, 0, null);
+            g2.dispose();
+
+            ImageIO.write(rgbImg, "jpg", destFile);
+
+            Image scaledImg = new ImageIcon(destFile.getAbsolutePath())
+                .getImage()
+                .getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            imageLabel.setIcon(new ImageIcon(scaledImg));
+            imageLabel.repaint();
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Đã cập nhật ảnh cho \"" + item.getName() + "\" thành công!",
+                "Upload ảnh",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(
+                this,
+                "Lỗi khi lưu ảnh: " + ex.getMessage(),
+                "Lỗi",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+
+    /**
+     * Builds a small camera icon for the upload overlay button.
+     */
+    private Icon buildCameraIcon() {
+        int size = 20;
+        BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(new Color(40, 40, 40));
+
+        g.drawRoundRect(1, 5, 18, 13, 4, 4);
+        g.drawOval(6, 7, 8, 8);
+        g.fillRoundRect(6, 3, 5, 3, 2, 2);
+        g.fillOval(14, 7, 2, 2);
+
+        g.dispose();
+        return new ImageIcon(img);
     }
 
     private void rebuildSouthPanel() {
