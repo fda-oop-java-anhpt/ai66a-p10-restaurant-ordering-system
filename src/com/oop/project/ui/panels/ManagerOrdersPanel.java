@@ -2,10 +2,16 @@ package com.oop.project.ui.panels;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.RenderingHints;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.format.DateTimeFormatter;
@@ -24,10 +30,13 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 
 import com.oop.project.model.CustomizationOption;
 import com.oop.project.model.Order;
@@ -39,101 +48,114 @@ import com.oop.project.ui.theme.ThemeFonts;
 
 public class ManagerOrdersPanel extends JPanel {
 
-    private static final Color STATUS_OPEN_COLOR = new Color(0x1565C0);
-    private static final Color STATUS_PAID_COLOR = new Color(0x1B8A3C);
+    // ── Status colours ──────────────────────────────────────────────────────────
+    private static final Color STATUS_OPEN_COLOR      = new Color(0x1565C0);
+    private static final Color STATUS_PAID_COLOR      = new Color(0x1B8A3C);
     private static final Color STATUS_CANCELLED_COLOR = new Color(0xC62828);
 
+    // ── Table accent colours ─────────────────────────────────────────────────────
+    private static final Color ROW_EVEN  = Color.WHITE;
+    private static final Color ROW_ODD   = new Color(0xF8F9FA);
+    private static final Color ROW_SEL   = new Color(0xBBDEFB);
+    private static final Color HDR_BG    = new Color(0xF1F3F4);
+    private static final Color HDR_FG    = new Color(0x5F6368);
+    private static final Color BORDER_CLR = new Color(0xE0E0E0);
+
+    // ── Services / formatters ────────────────────────────────────────────────────
     private final User currentUser;
     private final OrderAdminService orderAdminService = new OrderAdminService();
-    private final DecimalFormat priceFormat = new DecimalFormat("#,##0");
-    private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private final DecimalFormat priceFormat           = new DecimalFormat("#,##0");
+    private final DateTimeFormatter dtFormatter       = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    private final JTextField searchField = new JTextField();
-
-    private final JLabel totalOrdersValueLabel = new JLabel("0");
-    private final JLabel openOrdersValueLabel = new JLabel("0");
-    private final JLabel paidOrdersValueLabel = new JLabel("0");
+    // ── Summary labels ───────────────────────────────────────────────────────────
+    private final JLabel totalOrdersValueLabel    = new JLabel("0");
+    private final JLabel openOrdersValueLabel     = new JLabel("0");
+    private final JLabel paidOrdersValueLabel     = new JLabel("0");
     private final JLabel cancelledOrdersValueLabel = new JLabel("0");
 
+    // ── Search ───────────────────────────────────────────────────────────────────
+    private final JTextField searchField = new JTextField();
+
+    // ── Orders table ─────────────────────────────────────────────────────────────
     private final JTable ordersTable = new JTable();
     private final DefaultTableModel ordersModel = new DefaultTableModel(
-        new Object[] {"Order", "Time", "Staff", "Status", "Items", "Total"},
-        0
+        new Object[]{"ORDER", "TIME", "STAFF", "STATUS", "ITEMS", "TOTAL"}, 0
     ) {
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            return false;
-        }
+        @Override public boolean isCellEditable(int r, int c) { return false; }
     };
 
+    // ── Items table ──────────────────────────────────────────────────────────────
     private final JTable itemsTable = new JTable();
     private final DefaultTableModel itemsModel = new DefaultTableModel(
-        new Object[] {"Line ID", "Item", "Customizations", "Qty", "Line Total"},
-        0
+        new Object[]{"Line ID", "Item", "Customizations", "Qty", "Line Total"}, 0
     ) {
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            return false;
-        }
+        @Override public boolean isCellEditable(int r, int c) { return false; }
     };
 
-    private final JLabel statusValueBadge = new JLabel("-");
+    // ── Detail widgets ───────────────────────────────────────────────────────────
     private final JLabel detailHeaderLabel = new JLabel("Select an order to view details");
-
-    private final JButton markPaidBtn = new JButton("Mark Paid");
+    private final JLabel statusValueBadge  = new JLabel("-");
+    private final JButton markPaidBtn    = new JButton("Mark Paid");
     private final JButton cancelOrderBtn = new JButton("Cancel Order");
-    private final JButton refreshBtn = new JButton("Refresh");
+    private final JButton refreshBtn     = new JButton("Refresh");
 
+    // ── State ─────────────────────────────────────────────────────────────────────
     private List<Order> visibleOrders = new ArrayList<>();
     private Order selectedOrder;
 
+    // ═════════════════════════════════════════════════════════════════════════════
     public ManagerOrdersPanel(User currentUser) {
         this.currentUser = currentUser;
 
-        setLayout(new BorderLayout(AppTheme.SPACE_4, AppTheme.SPACE_4));
+        setLayout(new BorderLayout(AppTheme.SPACE_3, AppTheme.SPACE_3));
         setBackground(AppTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(
-            AppTheme.SPACE_4,
-            AppTheme.SPACE_4,
-            AppTheme.SPACE_4,
-            AppTheme.SPACE_4
-        ));
+            AppTheme.SPACE_4, AppTheme.SPACE_4, AppTheme.SPACE_4, AppTheme.SPACE_4));
 
         add(buildSummaryStrip(), BorderLayout.NORTH);
-        add(buildBody(), BorderLayout.CENTER);
+        add(buildBody(),         BorderLayout.CENTER);
 
         bindEvents();
         refresh();
     }
 
-    public void refresh() {
-        refresh(null);
-    }
+    // ── Public API ───────────────────────────────────────────────────────────────
+    public void refresh() { refresh(null); }
 
     public void refresh(Integer preferredOrderId) {
-        String keyword = searchField.getText() == null ? "" : searchField.getText().trim();
-        loadOrders(keyword, preferredOrderId);
+        String kw = searchField.getText() == null ? "" : searchField.getText().trim();
+        loadOrders(kw, preferredOrderId);
     }
 
+    // ── Summary strip ────────────────────────────────────────────────────────────
     private JPanel buildSummaryStrip() {
-        JPanel strip = new JPanel(new java.awt.GridLayout(1, 4, AppTheme.SPACE_2, 0));
+        JPanel strip = new JPanel(new GridLayout(1, 4, AppTheme.SPACE_3, 0));
         strip.setOpaque(false);
-
-        strip.add(createSummaryCard("Total Orders", totalOrdersValueLabel));
-        strip.add(createSummaryCard("Open", openOrdersValueLabel));
-        strip.add(createSummaryCard("Paid", paidOrdersValueLabel));
-        strip.add(createSummaryCard("Cancelled", cancelledOrdersValueLabel));
-
+        strip.add(createSummaryCard("Total Orders", totalOrdersValueLabel,    new Color(0xE3F2FD), new Color(0x1565C0)));
+        strip.add(createSummaryCard("Open",         openOrdersValueLabel,     new Color(0xFFF8E1), new Color(0xF57F17)));
+        strip.add(createSummaryCard("Paid",         paidOrdersValueLabel,     new Color(0xE8F5E9), new Color(0x1B8A3C)));
+        strip.add(createSummaryCard("Cancelled",    cancelledOrdersValueLabel, new Color(0xFFEBEE), new Color(0xC62828)));
         return strip;
     }
 
-    private JPanel createSummaryCard(String title, JLabel valueLabel) {
-        JPanel card = new JPanel();
+    private JPanel createSummaryCard(String title, JLabel valueLabel, Color bgColor, Color accentColor) {
+        JPanel card = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // left accent bar
+                g2.setColor(accentColor);
+                g2.fillRect(0, 0, 4, getHeight());
+                g2.dispose();
+            }
+        };
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(AppTheme.SURFACE_CONTAINER_LOWEST);
+        card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(AppTheme.OUTLINE, 1),
-            BorderFactory.createEmptyBorder(AppTheme.SPACE_3, AppTheme.SPACE_3, AppTheme.SPACE_3, AppTheme.SPACE_3)
+            BorderFactory.createLineBorder(BORDER_CLR, 1),
+            BorderFactory.createEmptyBorder(AppTheme.SPACE_3, AppTheme.SPACE_4 + 4, AppTheme.SPACE_3, AppTheme.SPACE_3)
         ));
 
         JLabel titleLabel = new JLabel(title);
@@ -141,208 +163,228 @@ public class ManagerOrdersPanel extends JPanel {
         titleLabel.setForeground(AppTheme.TEXT_SECONDARY);
         titleLabel.setAlignmentX(LEFT_ALIGNMENT);
 
-        valueLabel.setFont(ThemeFonts.titleLg().deriveFont(Font.BOLD));
-        valueLabel.setForeground(AppTheme.TEXT_PRIMARY);
+        valueLabel.setFont(ThemeFonts.displayMd());
+        valueLabel.setForeground(accentColor);
         valueLabel.setAlignmentX(LEFT_ALIGNMENT);
 
         card.add(titleLabel);
-        card.add(Box.createVerticalStrut(AppTheme.SPACE_2));
+        card.add(Box.createVerticalStrut(AppTheme.SPACE_1));
         card.add(valueLabel);
-
         return card;
     }
 
+    // ── Body (left table + right detail) ─────────────────────────────────────────
     private JPanel buildBody() {
         JPanel body = new JPanel(new BorderLayout(AppTheme.SPACE_3, 0));
         body.setOpaque(false);
-
         body.add(buildOrdersListPanel(), BorderLayout.CENTER);
-        body.add(buildDetailsPanel(), BorderLayout.EAST);
-
+        body.add(buildDetailsPanel(),    BorderLayout.EAST);
         return body;
     }
 
+    // ── Left: orders list ─────────────────────────────────────────────────────────
     private JPanel buildOrdersListPanel() {
-        JPanel panel = new JPanel(new BorderLayout(AppTheme.SPACE_2, AppTheme.SPACE_2));
+        JPanel panel = new JPanel(new BorderLayout(0, AppTheme.SPACE_2));
         panel.setOpaque(false);
 
-        JPanel top = new JPanel(new BorderLayout(AppTheme.SPACE_2, 0));
-        top.setOpaque(false);
+        // ── toolbar row
+        JPanel toolbar = new JPanel(new BorderLayout(AppTheme.SPACE_3, 0));
+        toolbar.setOpaque(false);
 
-        JLabel titleLabel = new JLabel("Orders Overview");
-        titleLabel.setFont(ThemeFonts.titleLg());
-        titleLabel.setForeground(AppTheme.TEXT_PRIMARY);
+        JLabel title = new JLabel("Orders Overview");
+        title.setFont(ThemeFonts.titleLg());
+        title.setForeground(AppTheme.TEXT_PRIMARY);
 
+        // Search field with placeholder appearance
         searchField.setFont(ThemeFonts.bodyMd());
-        searchField.setToolTipText("Search by order id, staff, status, or item name");
+        searchField.setToolTipText("Search orders…");
+        searchField.setBackground(Color.WHITE);
+        searchField.setForeground(AppTheme.TEXT_PRIMARY);
         searchField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(AppTheme.OUTLINE, 1),
-            BorderFactory.createEmptyBorder(AppTheme.SPACE_1, AppTheme.SPACE_2, AppTheme.SPACE_1, AppTheme.SPACE_2)
+            BorderFactory.createLineBorder(BORDER_CLR, 1),
+            BorderFactory.createEmptyBorder(6, AppTheme.SPACE_2, 6, AppTheme.SPACE_2)
         ));
+        // Hint text
+        searchField.putClientProperty("JTextField.placeholderText", "Search orders...");
 
-        top.add(titleLabel, BorderLayout.WEST);
-        top.add(searchField, BorderLayout.CENTER);
+        toolbar.add(title,       BorderLayout.WEST);
+        toolbar.add(searchField, BorderLayout.CENTER);
 
-        ordersTable.setModel(ordersModel);
-        ordersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        ordersTable.setRowHeight(28);
-        ordersTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-        ordersTable.getColumnModel().getColumn(3).setCellRenderer(new StatusCellRenderer());
+        // ── table
+        styleTable(ordersTable, ordersModel);
+        ordersTable.getColumnModel().getColumn(3).setCellRenderer(new StatusBadgeRenderer());
+        // Column widths
+        int[] widths = {55, 115, 80, 80, 55, 100};
+        for (int i = 0; i < widths.length; i++) {
+            ordersTable.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
 
-        JScrollPane ordersScroll = new JScrollPane(ordersTable);
-        ordersScroll.setBorder(BorderFactory.createLineBorder(AppTheme.OUTLINE, 1));
+        JScrollPane scroll = styledScrollPane(ordersTable);
 
-        panel.add(top, BorderLayout.NORTH);
-        panel.add(ordersScroll, BorderLayout.CENTER);
-
+        panel.add(toolbar, BorderLayout.NORTH);
+        panel.add(scroll,  BorderLayout.CENTER);
         return panel;
     }
 
+    // ── Right: order detail ───────────────────────────────────────────────────────
     private JPanel buildDetailsPanel() {
-        JPanel panel = new JPanel(new BorderLayout(AppTheme.SPACE_2, AppTheme.SPACE_2));
+        JPanel panel = new JPanel(new BorderLayout(0, AppTheme.SPACE_2));
         panel.setOpaque(false);
         panel.setPreferredSize(new Dimension(460, 0));
 
-        JPanel top = new JPanel();
-        top.setOpaque(false);
-        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+        // ── header card
+        JPanel headerCard = new JPanel(new BorderLayout(AppTheme.SPACE_2, AppTheme.SPACE_2));
+        headerCard.setBackground(Color.WHITE);
+        headerCard.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER_CLR, 1),
+            BorderFactory.createEmptyBorder(AppTheme.SPACE_3, AppTheme.SPACE_3, AppTheme.SPACE_3, AppTheme.SPACE_3)
+        ));
 
         detailHeaderLabel.setFont(ThemeFonts.titleLg());
         detailHeaderLabel.setForeground(AppTheme.TEXT_PRIMARY);
-        detailHeaderLabel.setAlignmentX(LEFT_ALIGNMENT);
 
-        JPanel statusRow = new JPanel(new BorderLayout(AppTheme.SPACE_2, 0));
+        // Status row: "Order status:" label | badge | spacer | Mark Paid | Cancel Order
+        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, AppTheme.SPACE_2, 0));
         statusRow.setOpaque(false);
-        statusRow.setAlignmentX(LEFT_ALIGNMENT);
 
-        JLabel statusLabel = new JLabel("Order status:");
-        statusLabel.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
-        statusLabel.setForeground(AppTheme.TEXT_SECONDARY);
+        JLabel statusLbl = new JLabel("Order status:");
+        statusLbl.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        statusLbl.setForeground(AppTheme.TEXT_SECONDARY);
 
         statusValueBadge.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
         statusValueBadge.setOpaque(true);
-        statusValueBadge.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(AppTheme.OUTLINE, 1),
-            BorderFactory.createEmptyBorder(AppTheme.SPACE_1, AppTheme.SPACE_2, AppTheme.SPACE_1, AppTheme.SPACE_2)
-        ));
+        statusValueBadge.setHorizontalAlignment(SwingConstants.CENTER);
+        statusValueBadge.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
         styleStatusBadge(null);
 
+        styleBtn(markPaidBtn,    STATUS_OPEN_COLOR);
+        styleBtn(cancelOrderBtn, STATUS_CANCELLED_COLOR);
         markPaidBtn.setEnabled(false);
-        markPaidBtn.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
-        markPaidBtn.setBackground(STATUS_OPEN_COLOR);
-        markPaidBtn.setForeground(Color.WHITE);
-        markPaidBtn.setFocusPainted(false);
-
         cancelOrderBtn.setEnabled(false);
-        cancelOrderBtn.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
-        cancelOrderBtn.setBackground(STATUS_CANCELLED_COLOR);
-        cancelOrderBtn.setForeground(Color.WHITE);
-        cancelOrderBtn.setFocusPainted(false);
 
-        JPanel statusActionsPanel = new JPanel(new GridLayout(1, 2, AppTheme.SPACE_2, 0));
-        statusActionsPanel.setOpaque(false);
-        statusActionsPanel.add(markPaidBtn);
-        statusActionsPanel.add(cancelOrderBtn);
+        statusRow.add(statusLbl);
+        statusRow.add(statusValueBadge);
+        statusRow.add(Box.createHorizontalStrut(AppTheme.SPACE_2));
+        statusRow.add(markPaidBtn);
+        statusRow.add(cancelOrderBtn);
 
-        statusRow.add(statusLabel, BorderLayout.WEST);
-        statusRow.add(statusValueBadge, BorderLayout.CENTER);
-        statusRow.add(statusActionsPanel, BorderLayout.EAST);
+        headerCard.add(detailHeaderLabel, BorderLayout.NORTH);
+        headerCard.add(statusRow,         BorderLayout.CENTER);
 
-        top.add(detailHeaderLabel);
-        top.add(Box.createVerticalStrut(AppTheme.SPACE_2));
-        top.add(statusRow);
+        // ── items table
+        styleTable(itemsTable, itemsModel);
+        int[] iWidths = {55, 110, 130, 45, 90};
+        for (int i = 0; i < iWidths.length; i++) {
+            itemsTable.getColumnModel().getColumn(i).setPreferredWidth(iWidths[i]);
+        }
+        JScrollPane itemsScroll = styledScrollPane(itemsTable);
 
-        itemsTable.setModel(itemsModel);
-        itemsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        itemsTable.setRowHeight(28);
-        itemsTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-
-        JScrollPane itemsScroll = new JScrollPane(itemsTable);
-        itemsScroll.setBorder(BorderFactory.createLineBorder(AppTheme.OUTLINE, 1));
-
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, AppTheme.SPACE_2, 0));
+        // ── bottom actions
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         actions.setOpaque(false);
-
-        styleActionButton(refreshBtn, AppTheme.SURFACE_CONTAINER_HIGH);
-        refreshBtn.setForeground(AppTheme.TEXT_PRIMARY);
-
+        styleBtn(refreshBtn, new Color(0x5F6368));
         actions.add(refreshBtn);
 
-        panel.add(top, BorderLayout.NORTH);
-        panel.add(itemsScroll, BorderLayout.CENTER);
-        panel.add(actions, BorderLayout.SOUTH);
-
+        panel.add(headerCard,   BorderLayout.NORTH);
+        panel.add(itemsScroll,  BorderLayout.CENTER);
+        panel.add(actions,      BorderLayout.SOUTH);
         return panel;
     }
 
-    private void styleActionButton(JButton button, Color bg) {
-        button.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
-        button.setBackground(bg);
-        button.setForeground(Color.WHITE);
-        button.setFocusPainted(false);
+    // ── Shared table styling ──────────────────────────────────────────────────────
+    private void styleTable(JTable table, DefaultTableModel model) {
+        table.setModel(model);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setRowHeight(32);
+        table.setShowVerticalLines(false);
+        table.setShowHorizontalLines(true);
+        table.setGridColor(new Color(0xEEEEEE));
+        table.setIntercellSpacing(new Dimension(0, 0));
+        table.setFont(ThemeFonts.bodyMd());
+        table.setBackground(Color.WHITE);
+        table.setForeground(AppTheme.TEXT_PRIMARY);
+        table.setSelectionBackground(ROW_SEL);
+        table.setSelectionForeground(AppTheme.TEXT_PRIMARY);
+        table.setFocusable(false);
+
+        JTableHeader hdr = table.getTableHeader();
+        hdr.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        hdr.setBackground(HDR_BG);
+        hdr.setForeground(HDR_FG);
+        hdr.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_CLR));
+        hdr.setReorderingAllowed(false);
+        hdr.setDefaultRenderer(new HeaderRenderer());
+
+        table.setDefaultRenderer(Object.class, new ZebraRenderer());
     }
 
+    private JScrollPane styledScrollPane(JTable table) {
+        JScrollPane sp = new JScrollPane(table);
+        sp.setBorder(BorderFactory.createLineBorder(BORDER_CLR, 1));
+        sp.getViewport().setBackground(Color.WHITE);
+        return sp;
+    }
+
+    // ── Button helper ─────────────────────────────────────────────────────────────
+    private void styleBtn(JButton btn, Color bg) {
+        btn.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        btn.setBackground(bg);
+        btn.setForeground(Color.WHITE);
+        btn.setOpaque(true);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBorder(new EmptyBorder(6, 14, 6, 14));
+        Color hover = bg.darker();
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                if (btn.isEnabled()) btn.setBackground(hover);
+            }
+            @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                btn.setBackground(bg);
+            }
+        });
+    }
+
+    // ── Events ────────────────────────────────────────────────────────────────────
     private void bindEvents() {
         searchField.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                loadOrders(searchField.getText().trim(), null);
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                loadOrders(searchField.getText().trim(), null);
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                loadOrders(searchField.getText().trim(), null);
-            }
+            @Override public void insertUpdate(DocumentEvent e)  { onSearch(); }
+            @Override public void removeUpdate(DocumentEvent e)  { onSearch(); }
+            @Override public void changedUpdate(DocumentEvent e) { onSearch(); }
+            private void onSearch() { loadOrders(searchField.getText().trim(), null); }
         });
 
         ordersTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                applySelectedOrder();
-            }
+            if (!e.getValueIsAdjusting()) applySelectedOrder();
         });
 
-        markPaidBtn.addActionListener(e -> updateStatus(Order.STATUS_PAID));
+        markPaidBtn.addActionListener(e    -> updateStatus(Order.STATUS_PAID));
         cancelOrderBtn.addActionListener(e -> updateStatus(Order.STATUS_CANCELLED));
-        refreshBtn.addActionListener(e -> refresh(selectedOrder == null ? null : selectedOrder.getId()));
+        refreshBtn.addActionListener(e     -> refresh(selectedOrder == null ? null : selectedOrder.getId()));
     }
 
+    // ── Data loading ──────────────────────────────────────────────────────────────
     private void loadOrders(String keyword, Integer preferredOrderId) {
         try {
-            if (keyword == null || keyword.isBlank()) {
-                visibleOrders = orderAdminService.getAllOrdersWithItems();
-            } else {
-                visibleOrders = orderAdminService.searchOrders(keyword);
-            }
+            visibleOrders = (keyword == null || keyword.isBlank())
+                ? orderAdminService.getAllOrdersWithItems()
+                : orderAdminService.searchOrders(keyword);
         } catch (RuntimeException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Orders", JOptionPane.ERROR_MESSAGE);
             visibleOrders = new ArrayList<>();
         }
-
         updateSummary();
         fillOrdersTable(preferredOrderId);
     }
 
     private void updateSummary() {
-        int total = visibleOrders.size();
-        int open = 0;
-        int paid = 0;
-        int cancelled = 0;
-
-        for (Order order : visibleOrders) {
-            if (order.isOpen()) {
-                open++;
-            } else if (order.isPaid()) {
-                paid++;
-            } else if (order.isCancelled()) {
-                cancelled++;
-            }
+        int total = visibleOrders.size(), open = 0, paid = 0, cancelled = 0;
+        for (Order o : visibleOrders) {
+            if      (o.isOpen())      open++;
+            else if (o.isPaid())      paid++;
+            else if (o.isCancelled()) cancelled++;
         }
-
         totalOrdersValueLabel.setText(String.valueOf(total));
         openOrdersValueLabel.setText(String.valueOf(open));
         paidOrdersValueLabel.setText(String.valueOf(paid));
@@ -351,22 +393,18 @@ public class ManagerOrdersPanel extends JPanel {
 
     private void fillOrdersTable(Integer preferredOrderId) {
         ordersModel.setRowCount(0);
-
         int selectedRow = -1;
         for (int i = 0; i < visibleOrders.size(); i++) {
-            Order order = visibleOrders.get(i);
-            ordersModel.addRow(new Object[] {
-                order.getId(),
-                order.getCreatedAt() == null ? "-" : order.getCreatedAt().format(dateTimeFormatter),
-                order.getStaffName(),
-                order.getOrderStatus(),
-                order.getItemCount(),
-                formatCurrency(order.getTotal())
+            Order o = visibleOrders.get(i);
+            ordersModel.addRow(new Object[]{
+                o.getId(),
+                o.getCreatedAt() == null ? "-" : o.getCreatedAt().format(dtFormatter),
+                o.getStaffName(),
+                o.getOrderStatus(),
+                o.getItemCount(),
+                formatCurrency(o.getTotal())
             });
-
-            if (preferredOrderId != null && order.getId() == preferredOrderId.intValue()) {
-                selectedRow = i;
-            }
+            if (preferredOrderId != null && o.getId() == preferredOrderId.intValue()) selectedRow = i;
         }
 
         if (ordersModel.getRowCount() == 0) {
@@ -379,10 +417,7 @@ public class ManagerOrdersPanel extends JPanel {
             return;
         }
 
-        if (selectedRow < 0) {
-            selectedRow = 0;
-        }
-
+        if (selectedRow < 0) selectedRow = 0;
         ordersTable.setRowSelectionInterval(selectedRow, selectedRow);
         applySelectedOrder();
     }
@@ -401,24 +436,22 @@ public class ManagerOrdersPanel extends JPanel {
 
         selectedOrder = visibleOrders.get(row);
         detailHeaderLabel.setText(
-            "Order #" + selectedOrder.getId() + " • "
-                + selectedOrder.getStaffName() + " • "
-                + formatCurrency(selectedOrder.getTotal())
+            "Order #" + selectedOrder.getId()
+            + "  •  " + selectedOrder.getStaffName()
+            + "  •  " + formatCurrency(selectedOrder.getTotal())
         );
 
         styleStatusBadge(selectedOrder.getOrderStatus());
         boolean open = selectedOrder.isOpen();
         markPaidBtn.setEnabled(open);
         cancelOrderBtn.setEnabled(open);
-
         fillItemsTable(selectedOrder);
     }
 
     private void fillItemsTable(Order order) {
         itemsModel.setRowCount(0);
-
         for (OrderItem item : order.getItems()) {
-            itemsModel.addRow(new Object[] {
+            itemsModel.addRow(new Object[]{
                 item.getId(),
                 item.getMenuItemName(),
                 summarizeCustomizations(item),
@@ -426,22 +459,11 @@ public class ManagerOrdersPanel extends JPanel {
                 formatCurrency(item.getLineTotal())
             });
         }
-
-        boolean hasItems = itemsModel.getRowCount() > 0;
-        if (hasItems) {
-            itemsTable.setRowSelectionInterval(0, 0);
-        }
+        if (itemsModel.getRowCount() > 0) itemsTable.setRowSelectionInterval(0, 0);
     }
 
     private void updateStatus(String newStatus) {
-        if (selectedOrder == null) {
-            return;
-        }
-
-        if (!selectedOrder.isOpen()) {
-            return;
-        }
-
+        if (selectedOrder == null || !selectedOrder.isOpen()) return;
         try {
             orderAdminService.updateOrderStatus(currentUser, selectedOrder.getId(), newStatus);
             refresh(selectedOrder.getId());
@@ -452,89 +474,102 @@ public class ManagerOrdersPanel extends JPanel {
         }
     }
 
+    // ── Status badge styling ──────────────────────────────────────────────────────
     private void styleStatusBadge(String status) {
         if (status == null || status.isBlank()) {
-            statusValueBadge.setText("-");
+            statusValueBadge.setText("  -  ");
             statusValueBadge.setForeground(AppTheme.TEXT_SECONDARY);
-            statusValueBadge.setBackground(AppTheme.SURFACE_CONTAINER_LOWEST);
+            statusValueBadge.setBackground(AppTheme.SURFACE_CONTAINER);
             return;
         }
-
-        statusValueBadge.setText(status);
-        Color color = getStatusColor(status);
+        statusValueBadge.setText("  " + status + "  ");
         statusValueBadge.setForeground(Color.WHITE);
-        statusValueBadge.setBackground(color);
+        statusValueBadge.setBackground(getStatusColor(status));
     }
 
     private Color getStatusColor(String status) {
-        if (Order.STATUS_OPEN.equals(status)) {
-            return STATUS_OPEN_COLOR;
-        }
-        if (Order.STATUS_PAID.equals(status)) {
-            return STATUS_PAID_COLOR;
-        }
-        if (Order.STATUS_CANCELLED.equals(status)) {
-            return STATUS_CANCELLED_COLOR;
-        }
+        if (Order.STATUS_OPEN.equals(status))      return STATUS_OPEN_COLOR;
+        if (Order.STATUS_PAID.equals(status))      return STATUS_PAID_COLOR;
+        if (Order.STATUS_CANCELLED.equals(status)) return STATUS_CANCELLED_COLOR;
         return AppTheme.TEXT_SECONDARY;
     }
 
-    private class StatusCellRenderer extends DefaultTableCellRenderer {
+    // ── Helpers ───────────────────────────────────────────────────────────────────
+    private String summarizeCustomizations(OrderItem item) {
+        String opts = item.getCustomizations().isEmpty()
+            ? "-"
+            : item.getCustomizations().stream()
+                .map(CustomizationOption::getName)
+                .collect(Collectors.joining(", "));
+        String note = item.getNote() == null ? "" : item.getNote().trim();
+        return note.isBlank() ? opts : opts + " | Note: " + note;
+    }
+
+    private String formatCurrency(BigDecimal amount) {
+        return amount == null ? "0 VND" : priceFormat.format(amount) + " VND";
+    }
+
+    // ── Custom renderers ──────────────────────────────────────────────────────────
+
+    /** Coloured status pill in the orders table */
+    private class StatusBadgeRenderer extends DefaultTableCellRenderer {
         @Override
-        public java.awt.Component getTableCellRendererComponent(
-            JTable table,
-            Object value,
-            boolean isSelected,
-            boolean hasFocus,
-            int row,
-            int column
-        ) {
-            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
             String status = value == null ? "" : value.toString();
             setHorizontalAlignment(CENTER);
             setText(status);
-
+            setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+            Color statusColor = getStatusColor(status);
             if (isSelected) {
                 setForeground(Color.WHITE);
-                setBackground(getStatusColor(status).darker());
+                setBackground(statusColor.darker());
             } else {
                 setForeground(Color.WHITE);
-                setBackground(getStatusColor(status));
+                setBackground(statusColor);
+            }
+            setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8));
+            return this;
+        }
+    }
+
+    /** Zebra-striped rows for the generic object renderer */
+    private class ZebraRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
+            setFont(ThemeFonts.bodyMd());
+            setBorder(BorderFactory.createEmptyBorder(0, AppTheme.SPACE_2, 0, AppTheme.SPACE_2));
+            if (isSelected) {
+                setBackground(ROW_SEL);
+                setForeground(AppTheme.TEXT_PRIMARY);
+            } else {
+                setBackground(row % 2 == 0 ? ROW_EVEN : ROW_ODD);
+                setForeground(AppTheme.TEXT_PRIMARY);
             }
             return this;
         }
     }
 
-    private String summarizeCustomizations(OrderItem orderItem) {
-        String customizationSummary = orderItem.getCustomizations().isEmpty()
-            ? "-"
-            : orderItem.getCustomizations()
-            .stream()
-            .map(CustomizationOption::getName)
-            .collect(Collectors.joining(", "));
-
-        String note = orderItem.getNote() == null ? "" : orderItem.getNote().trim();
-        if (!note.isBlank()) {
-            return customizationSummary + " | Note: " + note;
+    /** Styled table header renderer */
+    private static class HeaderRenderer extends DefaultTableCellRenderer {
+        HeaderRenderer() {
+            setHorizontalAlignment(LEFT);
         }
-
-        return customizationSummary;
-    }
-
-    private String formatCustomizationOption(CustomizationOption option) {
-        BigDecimal delta = option.getPriceDelta();
-        if (delta == null || delta.compareTo(BigDecimal.ZERO) == 0) {
-            return option.getName();
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
+            setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+            setBackground(HDR_BG);
+            setForeground(HDR_FG);
+            setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_CLR),
+                BorderFactory.createEmptyBorder(4, AppTheme.SPACE_2, 4, AppTheme.SPACE_2)
+            ));
+            return this;
         }
-
-        String sign = delta.compareTo(BigDecimal.ZERO) > 0 ? "+" : "-";
-        return option.getName() + " (" + sign + formatCurrency(delta.abs()) + ")";
-    }
-
-    private String formatCurrency(BigDecimal amount) {
-        if (amount == null) {
-            return "0 VND";
-        }
-        return priceFormat.format(amount) + " VND";
     }
 }
