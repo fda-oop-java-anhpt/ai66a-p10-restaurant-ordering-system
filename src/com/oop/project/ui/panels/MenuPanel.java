@@ -20,7 +20,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
-import java.util.Collections;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -47,7 +46,6 @@ import com.oop.project.model.OrderDraft;
 import com.oop.project.model.User;
 import com.oop.project.service.MenuAdminService;
 import com.oop.project.service.MenuService;
-import com.oop.project.service.OrderService;
 import com.oop.project.ui.theme.AppTheme;
 
 public class MenuPanel extends JPanel {
@@ -57,18 +55,14 @@ public class MenuPanel extends JPanel {
     private static final String SEARCH_PLACEHOLDER = "Search...";
 
     private final User currentUser;
-    private final OrderDraft currentDraft;
     private final MenuService menuService;
     private final MenuAdminService adminService;
-    private final OrderService orderService;
     private final Runnable onMenuChanged;
-    private final Runnable onItemAdded;
     private final DecimalFormat priceFormat = new DecimalFormat("#,##0");
 
     private int currentCategoryId = ALL_CATEGORY_ID;
     private List<MenuItem> allMenuItems;
     private MenuItem selectedItem;
-    private MenuItem lastAddedItem;
     private boolean searchPromptActive = true;
 
     private final JList<MenuCategory> categoryList = new JList<>();
@@ -76,9 +70,8 @@ public class MenuPanel extends JPanel {
     private final JPanel itemGridPanel = new JPanel();
 
     private final JButton addFoodBtn = new JButton("Add");
-    private final JButton editPriceBtn = new JButton("Edit Price");
+    private final JButton editFoodBtn = new JButton("Edit");
     private final JButton deleteFoodBtn = new JButton("Delete");
-    private final JButton clearSearchBtn = new JButton("Clear Search");
 
     private JPanel southPanel;
 
@@ -88,12 +81,9 @@ public class MenuPanel extends JPanel {
 
     public MenuPanel(User user, OrderDraft draft, Runnable onMenuChanged, Runnable onItemAdded) {
         this.currentUser = user;
-        this.currentDraft = draft;
         this.menuService = new MenuService();
         this.adminService = new MenuAdminService();
-        this.orderService = new OrderService();
         this.onMenuChanged = onMenuChanged;
-        this.onItemAdded = onItemAdded;
 
         setLayout(new BorderLayout(AppTheme.SPACE_4, AppTheme.SPACE_4));
         setBackground(AppTheme.SURFACE);
@@ -201,7 +191,7 @@ public class MenuPanel extends JPanel {
         JLabel subtitle = new JLabel(
             isManagerMode()
                 ? "Select a card to edit or delete"
-                : "Click a card to add item to cart"
+                : "Browse menu only. Add and customize items in Orders"
         );
         subtitle.setForeground(AppTheme.ON_SURFACE_VARIANT);
         subtitle.setFont(bodyFont(12f));
@@ -328,13 +318,8 @@ public class MenuPanel extends JPanel {
     }
 
     private void bindActions() {
-        clearSearchBtn.addActionListener(e -> {
-            setSearchPrompt();
-            applyFilter();
-        });
-
         addFoodBtn.addActionListener(e -> showAddFoodDialog());
-        editPriceBtn.addActionListener(e -> editSelectedPrice());
+        editFoodBtn.addActionListener(e -> editSelectedFood());
         deleteFoodBtn.addActionListener(e -> deleteSelectedFood());
     }
 
@@ -455,29 +440,25 @@ public class MenuPanel extends JPanel {
         JLabel imageLabel = new JLabel(loadMenuItemImage(item, 185, 125));
         imageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel name = new JLabel(item.getName());
+        JLabel name = new JLabel("<html><div style='width:118px;'>" + escapeHtml(item.getName()) + "</div></html>");
         name.setForeground(textColor);
         name.setFont(headlineFont(13f));
 
         JLabel price = new JLabel(formatCurrency(item.getBasePrice()));
         price.setForeground(textColor);
         price.setFont(headlineFont(13f));
+        price.setHorizontalAlignment(SwingConstants.RIGHT);
 
         JPanel titleRow = new JPanel();
         titleRow.setOpaque(false);
-        titleRow.setLayout(new BoxLayout(titleRow, BoxLayout.X_AXIS));
+        titleRow.setLayout(new BorderLayout(8, 0));
         titleRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        name.setAlignmentY(Component.CENTER_ALIGNMENT);
-        price.setAlignmentY(Component.CENTER_ALIGNMENT);
-
-        titleRow.add(name);
-        titleRow.add(Box.createHorizontalStrut(12));
-        titleRow.add(price);
-        titleRow.add(Box.createHorizontalGlue());
+        titleRow.add(name, BorderLayout.CENTER);
+        titleRow.add(price, BorderLayout.EAST);
 
         String description = item.getDescription() == null ? "No description available." : item.getDescription();
-        JLabel desc = new JLabel("<html><div style='width:185px;'>" + description + "</div></html>");
+        JLabel desc = new JLabel("<html><div style='width:185px;'>" + escapeHtml(description) + "</div></html>");
         desc.setForeground(subTextColor);
         desc.setFont(bodyFont(11f));
         desc.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -507,52 +488,22 @@ public class MenuPanel extends JPanel {
             price.addMouseListener(selectListener);
             desc.addMouseListener(selectListener);
         } else {
-            JButton addBtn = new JButton("Add to Cart");
-            stylePrimaryButton(addBtn);
-            addBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-            addBtn.addActionListener(e -> addItemToDraft(item));
-
             JPanel bottom = new JPanel();
             bottom.setOpaque(false);
             bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
             bottom.add(Box.createVerticalStrut(6));
-            bottom.add(addBtn);
+
+            JLabel hint = new JLabel("Customize in Orders tab");
+            hint.setForeground(subTextColor);
+            hint.setFont(bodyFont(11f));
+            hint.setAlignmentX(Component.CENTER_ALIGNMENT);
+            bottom.add(hint);
 
             card.add(content, BorderLayout.CENTER);
             card.add(bottom, BorderLayout.SOUTH);
-
-            MouseAdapter addListener = new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    addItemToDraft(item);
-                }
-            };
-
-            card.addMouseListener(addListener);
-            content.addMouseListener(addListener);
-            imageLabel.addMouseListener(addListener);
-            titleRow.addMouseListener(addListener);
-            name.addMouseListener(addListener);
-            price.addMouseListener(addListener);
-            desc.addMouseListener(addListener);
         }
 
         return card;
-    }
-
-    private void addItemToDraft(MenuItem item) {
-        if (currentDraft == null) {
-            return;
-        }
-
-        orderService.addItem(currentDraft, item, Collections.emptyList(), 1);
-        lastAddedItem = item;
-
-        if (onItemAdded != null) {
-            onItemAdded.run();
-        }
-
-        rebuildSouthPanel();
     }
 
     private void rebuildSouthPanel() {
@@ -598,7 +549,7 @@ public class MenuPanel extends JPanel {
         if (isManagerMode()) {
             rightText = selectedItem == null ? "No item selected" : selectedItem.getName();
         } else {
-            rightText = lastAddedItem == null ? "No item added yet" : "Last added: " + lastAddedItem.getName();
+            rightText = "Use Orders tab to add and customize";
         }
 
         strip.add(createBadge("Filtered " + filteredCount, AppTheme.SURFACE_CONTAINER, AppTheme.ON_BACKGROUND));
@@ -612,18 +563,15 @@ public class MenuPanel extends JPanel {
         JPanel panel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, AppTheme.SPACE_2, 0));
         panel.setOpaque(false);
 
-        styleGhostButton(clearSearchBtn);
-        panel.add(clearSearchBtn);
-
         if (isManagerMode()) {
-            styleGhostButton(editPriceBtn);
+            styleGhostButton(editFoodBtn);
             styleDangerButton(deleteFoodBtn);
             stylePrimaryButton(addFoodBtn);
 
-            editPriceBtn.setEnabled(selectedItem != null);
+            editFoodBtn.setEnabled(selectedItem != null);
             deleteFoodBtn.setEnabled(selectedItem != null);
 
-            panel.add(editPriceBtn);
+            panel.add(editFoodBtn);
             panel.add(deleteFoodBtn);
             panel.add(addFoodBtn);
         }
@@ -728,51 +676,105 @@ public class MenuPanel extends JPanel {
         }
     }
 
-    private void editSelectedPrice() {
+    private void editSelectedFood() {
         if (!isManagerMode() || selectedItem == null) {
             return;
         }
 
-        String currentPrice = selectedItem.getBasePrice() == null
-            ? "0"
-            : selectedItem.getBasePrice().toPlainString();
-
-        String input = JOptionPane.showInputDialog(this, "New price", currentPrice);
-        if (input == null) {
+        List<MenuCategory> categories = menuService.getAllCategories();
+        if (categories.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No category available.");
             return;
         }
 
-        input = input.trim();
-        if (input.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Price cannot be empty.");
-            return;
+        JTextField nameField = new JTextField(selectedItem.getName());
+        JTextField descriptionField = new JTextField(selectedItem.getDescription() == null ? "" : selectedItem.getDescription());
+        JTextField priceField = new JTextField(
+            selectedItem.getBasePrice() == null ? "0" : selectedItem.getBasePrice().toPlainString()
+        );
+        JComboBox<MenuCategory> categoryCombo = new JComboBox<>(categories.toArray(MenuCategory[]::new));
+
+        for (MenuCategory category : categories) {
+            if (category.getId() == selectedItem.getCategoryId()) {
+                categoryCombo.setSelectedItem(category);
+                break;
+            }
         }
 
-        try {
-            BigDecimal newPrice = new BigDecimal(input);
-            adminService.updatePrice(currentUser, selectedItem.getId(), newPrice);
+        JPanel formPanel = new JPanel(new java.awt.GridLayout(0, 1, 0, 8));
+        formPanel.add(new JLabel("Food name"));
+        formPanel.add(nameField);
+        formPanel.add(new JLabel("Description"));
+        formPanel.add(descriptionField);
+        formPanel.add(new JLabel("Base price"));
+        formPanel.add(priceField);
+        formPanel.add(new JLabel("Category"));
+        formPanel.add(categoryCombo);
 
-            int selectedId = selectedItem.getId();
-            loadMenuItems(currentCategoryId);
+        while (true) {
+            int result = JOptionPane.showConfirmDialog(
+                this,
+                formPanel,
+                "Edit Food",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+            );
 
-            for (MenuItem item : allMenuItems) {
-                if (item.getId() == selectedId) {
-                    selectedItem = item;
-                    break;
+            if (result != JOptionPane.OK_OPTION) {
+                return;
+            }
+
+            String name = nameField.getText().trim();
+            String description = descriptionField.getText().trim();
+            String priceText = priceField.getText().trim();
+            MenuCategory category = (MenuCategory) categoryCombo.getSelectedItem();
+
+            if (name.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Food name is required.");
+                continue;
+            }
+
+            if (category == null) {
+                JOptionPane.showMessageDialog(this, "Please select a category.");
+                continue;
+            }
+
+            BigDecimal price;
+            try {
+                price = new BigDecimal(priceText);
+                if (price.compareTo(BigDecimal.ZERO) < 0) {
+                    JOptionPane.showMessageDialog(this, "Base price must be greater than or equal to 0.");
+                    continue;
                 }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Base price must be a valid number.");
+                continue;
             }
 
-            applyFilter();
+            try {
+                int selectedId = selectedItem.getId();
+                adminService.updateFood(currentUser, selectedId, name, description, price, category.getId());
 
-            if (onMenuChanged != null) {
-                onMenuChanged.run();
+                loadMenuItems(currentCategoryId);
+
+                for (MenuItem item : allMenuItems) {
+                    if (item.getId() == selectedId) {
+                        selectedItem = item;
+                        break;
+                    }
+                }
+
+                applyFilter();
+
+                if (onMenuChanged != null) {
+                    onMenuChanged.run();
+                }
+
+                JOptionPane.showMessageDialog(this, "Updated successfully!");
+                return;
+            } catch (RuntimeException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Edit Food", JOptionPane.ERROR_MESSAGE);
             }
-
-            JOptionPane.showMessageDialog(this, "Updated successfully!");
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Invalid number.");
-        } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Update Price", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -806,11 +808,21 @@ public class MenuPanel extends JPanel {
         } catch (RuntimeException ex) {
             JOptionPane.showMessageDialog(
                 this,
-                "Cannot delete this item. It may be used in existing orders.",
+                ex.getMessage(),
                 "Delete Food",
                 JOptionPane.ERROR_MESSAGE
             );
         }
+    }
+
+    private String escapeHtml(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;");
     }
 
     private JPanel createBadge(String text, Color bg, Color fg) {
