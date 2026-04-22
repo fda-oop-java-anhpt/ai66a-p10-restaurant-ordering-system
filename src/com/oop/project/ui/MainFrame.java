@@ -157,9 +157,12 @@ public class MainFrame extends JFrame {
 
         nav.add(createNavButton("Menu", SCREEN_MENU));
         nav.add(Box.createVerticalStrut(AppTheme.SPACE_2));
-        nav.add(createNavButton("Cart", SCREEN_CART));
-        nav.add(Box.createVerticalStrut(AppTheme.SPACE_2));
         nav.add(createNavButton("Orders", SCREEN_ORDERS));
+
+        if (!currentUser.isManager()) {
+            nav.add(Box.createVerticalStrut(AppTheme.SPACE_2));
+            nav.add(createNavButton("Cart", SCREEN_CART));
+        }
 
         if (currentUser.isManager()) {
             nav.add(Box.createVerticalStrut(AppTheme.SPACE_2));
@@ -303,6 +306,10 @@ public class MainFrame extends JFrame {
             return;
         }
 
+        if (SCREEN_CART.equals(key) && currentUser.isManager()) {
+            return;
+        }
+
         activeScreen = key;
         cardLayout.show(contentPanel, key);
 
@@ -332,7 +339,7 @@ public class MainFrame extends JFrame {
                 titleLabel.setText("Menu");
                 subtitleLabel.setText(
                     currentUser.isManager()
-                        ? "Manage menu items, prices, and categories"
+                        ? "Manage menu items, descriptions, and pricing"
                         : "Browse menu items and add them to the active draft order"
                 );
                 break;
@@ -344,12 +351,16 @@ public class MainFrame extends JFrame {
 
             case SCREEN_ORDERS:
                 titleLabel.setText("Orders");
-                subtitleLabel.setText("Manage and review orders");
+                subtitleLabel.setText(
+                    currentUser.isManager()
+                        ? "Track order queue, view details, and update order status"
+                        : "Build and customize active draft orders"
+                );
                 break;
 
             case SCREEN_DASHBOARD:
                 titleLabel.setText("Dashboard");
-                subtitleLabel.setText("Analytics overview");
+                subtitleLabel.setText("Revenue and best-seller analytics overview");
                 break;
 
             default:
