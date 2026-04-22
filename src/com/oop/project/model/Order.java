@@ -13,6 +13,7 @@ public class Order {
     private BigDecimal tax;
     private BigDecimal serviceFee;
     private BigDecimal total;
+    private String orderStatus;
     private LocalDateTime createdAt;
     private List<OrderItem> items;
 
@@ -20,11 +21,17 @@ public class Order {
     public Order(int id, int staffId, BigDecimal subtotal, BigDecimal tax,
                  BigDecimal serviceFee, BigDecimal total,
                  LocalDateTime createdAt, List<OrderItem> items) {
-        this(id, staffId, null, subtotal, tax, serviceFee, total, createdAt, items);
+        this(id, staffId, null, subtotal, tax, serviceFee, total, null, createdAt, items);
     }
 
     public Order(int id, int staffId, String staffName, BigDecimal subtotal, BigDecimal tax,
                  BigDecimal serviceFee, BigDecimal total,
+                 LocalDateTime createdAt, List<OrderItem> items) {
+        this(id, staffId, staffName, subtotal, tax, serviceFee, total, null, createdAt, items);
+    }
+
+    public Order(int id, int staffId, String staffName, BigDecimal subtotal, BigDecimal tax,
+                 BigDecimal serviceFee, BigDecimal total, String orderStatus,
                  LocalDateTime createdAt, List<OrderItem> items) {
         this.id = id;
         this.staffId = staffId;
@@ -33,6 +40,7 @@ public class Order {
         this.tax = tax;
         this.serviceFee = serviceFee;
         this.total = total;
+        this.orderStatus = normalizeStatus(orderStatus);
         this.createdAt = createdAt;
         this.items = items;
     }
@@ -54,6 +62,8 @@ public class Order {
     public BigDecimal getServiceFee() { return serviceFee; }
 
     public BigDecimal getTotal() { return total; }
+
+    public String getOrderStatus() { return normalizeStatus(orderStatus); }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 
@@ -101,6 +111,10 @@ public class Order {
         this.total = total;
     }
 
+    public void setOrderStatus(String orderStatus) {
+        this.orderStatus = normalizeStatus(orderStatus);
+    }
+
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public void setItems(List<OrderItem> items) {
@@ -119,6 +133,14 @@ public class Order {
 
         this.items.add(item);
     }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "OPEN";
+        }
+        return status.trim().toUpperCase();
+    }
+
     // toString
     @Override
     public String toString() {
@@ -130,6 +152,7 @@ public class Order {
                 ", tax=" + tax +
                 ", serviceFee=" + serviceFee +
                 ", total=" + total +
+                ", orderStatus='" + orderStatus + '\'' +
                 ", createdAt=" + createdAt +
                 ", items=" + (items != null ? items.size() : 0) +
                 '}';

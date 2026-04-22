@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oop.project.db.DBConnection;
+import com.oop.project.model.CustomizationOption;
 import com.oop.project.model.MenuItem;
 import com.oop.project.model.Order;
 import com.oop.project.model.OrderItem;
@@ -25,8 +26,8 @@ public class OrderRepository {
                            BigDecimal serviceFee,
                            BigDecimal total) {
         String sql = """
-            INSERT INTO orders (staff_id, subtotal, tax, service_fee, total)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO orders (staff_id, order_status, subtotal, tax, service_fee, total)
+            VALUES (?, 'OPEN', ?, ?, ?, ?)
             RETURNING id
         """;
 
@@ -71,6 +72,7 @@ public class OrderRepository {
                 o.id, 
                 o.staff_id, 
                 u.username AS staff_name,
+                o.order_status,
                 o.subtotal, 
                 o.tax, 
                 o.service_fee, 
@@ -105,6 +107,7 @@ public class OrderRepository {
                 o.id,
                 o.staff_id,
                 u.username AS staff_name,
+                o.order_status,
                 o.subtotal,
                 o.tax,
                 o.service_fee,
@@ -136,6 +139,7 @@ public class OrderRepository {
                 o.id,
                 o.staff_id,
                 u.username AS staff_name,
+                o.order_status,
                 o.subtotal,
                 o.tax,
                 o.service_fee,
@@ -170,6 +174,7 @@ public class OrderRepository {
                 o.id,
                 o.staff_id,
                 u.username AS staff_name,
+                o.order_status,
                 o.subtotal,
                 o.tax,
                 o.service_fee,
@@ -204,6 +209,7 @@ public class OrderRepository {
                 o.id,
                 o.staff_id,
                 u.username AS staff_name,
+                o.order_status,
                 o.subtotal,
                 o.tax,
                 o.service_fee,
@@ -235,7 +241,6 @@ public class OrderRepository {
         String sql = """
             SELECT 
                 oi.id,
-                oi.order_id,
                 oi.menu_item_id,
                 m.name AS menu_item_name,
                 oi.quantity,
@@ -253,12 +258,151 @@ public class OrderRepository {
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
-                items.add(mapOrderItem(rs));
+                items.add(mapOrderItem(rs, orderId));
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return items;
+    }
+
+    public void updateOrderStatus(int orderId, String newStatus) {
+        String normalizedStatus = normalizeStatus(newStatus);
+        String sql = "UPDATE orders SET order_status = ? WHERE id = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, normalizedStatus);
+            ps.setInt(2, orderId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot update order status", e);
+        }
+    }
+
+    public void updateOrderItemQuantity(int orderId, int orderItemId, int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than 0");
+        }
+
+        String updateQtySql = "UPDATE order_items SET quantity = ? WHERE id = ? AND order_id = ?";
+
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(updateQtySql)) {
+                ps.setInt(1, quantity);
+                ps.setInt(2, orderItemId);
+                ps.setInt(3, orderId);
+                ps.executeUpdate();
+            }
+
+            recalculateOrderTotals(conn, orderId);
+            conn.commit();
+        } catch (SQLException e) {
+            rollbackQuietly(conn);
+            throw new RuntimeException("Cannot update order item quantity", e);
+        } finally {
+            closeConnectionQuietly(conn);
+        }
+    }
+
+    public void updateOrderItemCustomizations(int orderId, int orderItemId, int menuItemId, List<Integer> customizationIds) {
+        String deleteSql = "DELETE FROM order_item_customizations WHERE order_item_id = ?";
+        String insertSql = """
+            INSERT INTO order_item_customizations (order_id, order_item_id, menu_item_id, customization_id)
+            VALUES (?, ?, ?, ?)
+        """;
+        String basePriceSql = """
+            SELECT m.base_price
+            FROM order_items oi
+            JOIN menu_items m ON m.id = oi.menu_item_id
+            WHERE oi.id = ? AND oi.order_id = ?
+        """;
+        String updateUnitPriceSql = "UPDATE order_items SET unit_price = ? WHERE id = ? AND order_id = ?";
+
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(deleteSql)) {
+                ps.setInt(1, orderItemId);
+                ps.executeUpdate();
+            }
+
+            if (customizationIds != null && !customizationIds.isEmpty()) {
+                try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+                    for (Integer customizationId : customizationIds) {
+                        if (customizationId == null) {
+                            continue;
+                        }
+                        ps.setInt(1, orderId);
+                        ps.setInt(2, orderItemId);
+                        ps.setInt(3, menuItemId);
+                        ps.setInt(4, customizationId);
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+            }
+
+            BigDecimal basePrice = BigDecimal.ZERO;
+            try (PreparedStatement ps = conn.prepareStatement(basePriceSql)) {
+                ps.setInt(1, orderItemId);
+                ps.setInt(2, orderId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        basePrice = rs.getBigDecimal("base_price");
+                    }
+                }
+            }
+
+            BigDecimal customizationDelta = sumCustomizationDelta(conn, orderItemId);
+            BigDecimal newUnitPrice = basePrice.add(customizationDelta);
+
+            try (PreparedStatement ps = conn.prepareStatement(updateUnitPriceSql)) {
+                ps.setBigDecimal(1, newUnitPrice);
+                ps.setInt(2, orderItemId);
+                ps.setInt(3, orderId);
+                ps.executeUpdate();
+            }
+
+            recalculateOrderTotals(conn, orderId);
+            conn.commit();
+        } catch (SQLException e) {
+            rollbackQuietly(conn);
+            throw new RuntimeException("Cannot update order item customizations", e);
+        } finally {
+            closeConnectionQuietly(conn);
+        }
+    }
+
+    public void deleteOrderItem(int orderId, int orderItemId) {
+        String sql = "DELETE FROM order_items WHERE id = ? AND order_id = ?";
+
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, orderItemId);
+                ps.setInt(2, orderId);
+                ps.executeUpdate();
+            }
+
+            recalculateOrderTotals(conn, orderId);
+            conn.commit();
+        } catch (SQLException e) {
+            rollbackQuietly(conn);
+            throw new RuntimeException("Cannot remove order item", e);
+        } finally {
+            closeConnectionQuietly(conn);
+        }
     }
 
     public BigDecimal calculateDailyRevenue(LocalDate date) {
@@ -400,12 +544,14 @@ public class OrderRepository {
             rs.getBigDecimal("tax"),
             rs.getBigDecimal("service_fee"),
             rs.getBigDecimal("total"),
+            rs.getString("order_status"),
             rs.getTimestamp("created_at").toLocalDateTime(),
             new ArrayList<>()
         );
     }
 
-    private OrderItem mapOrderItem(ResultSet rs) throws SQLException {
+    private OrderItem mapOrderItem(ResultSet rs, int orderId) throws SQLException {
+        int orderItemId = rs.getInt("id");
         MenuItem menuItem = new MenuItem(
             rs.getInt("menu_item_id"),
             rs.getString("menu_item_name"),
@@ -415,11 +561,14 @@ public class OrderRepository {
             null
         );
 
-        return new OrderItem(
+        List<CustomizationOption> customizations = new CustomizationOptionRepository().findByOrderItemId(orderItemId);
+        OrderItem item = new OrderItem(
             menuItem,
-            new ArrayList<>(),
+            customizations,
             rs.getInt("quantity")
         );
+        item.setId(orderItemId);
+        return item;
     }
 
     public int submitOrder(com.oop.project.model.OrderDraft draft, int staffId, BigDecimal subtotal, BigDecimal tax, BigDecimal serviceFee, BigDecimal total) {
@@ -462,8 +611,8 @@ public class OrderRepository {
 
     private int createOrderHeader(Connection conn, int staffId, BigDecimal subtotal, BigDecimal tax, BigDecimal serviceFee, BigDecimal total) throws SQLException {
         String sql = """
-            INSERT INTO orders (staff_id, subtotal, tax, service_fee, total)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO orders (staff_id, order_status, subtotal, tax, service_fee, total)
+            VALUES (?, 'OPEN', ?, ?, ?, ?)
             RETURNING id
         """;
 
@@ -506,6 +655,104 @@ public class OrderRepository {
             ps.setInt(2, menuItemId);
             ps.setInt(3, customizationId);
             ps.executeUpdate();
+        }
+    }
+
+    private BigDecimal sumCustomizationDelta(Connection conn, int orderItemId) throws SQLException {
+        String sql = """
+            SELECT COALESCE(SUM(c.price_delta), 0) AS total_delta
+            FROM order_item_customizations oic
+            JOIN customization_options c ON c.id = oic.customization_id
+            WHERE oic.order_item_id = ?
+        """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderItemId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBigDecimal("total_delta");
+                }
+            }
+        }
+
+        return BigDecimal.ZERO;
+    }
+
+    private void recalculateOrderTotals(Connection conn, int orderId) throws SQLException {
+        String subtotalSql = """
+            SELECT COALESCE(SUM(unit_price * quantity), 0) AS subtotal
+            FROM order_items
+            WHERE order_id = ?
+        """;
+        String updateSql = """
+            UPDATE orders
+            SET subtotal = ?,
+                tax = ?,
+                service_fee = ?,
+                total = ?
+            WHERE id = ?
+        """;
+
+        BigDecimal subtotal = BigDecimal.ZERO;
+        try (PreparedStatement ps = conn.prepareStatement(subtotalSql)) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    subtotal = rs.getBigDecimal("subtotal");
+                }
+            }
+        }
+
+        BigDecimal tax = subtotal.multiply(new BigDecimal("0.10"));
+        BigDecimal serviceFee = subtotal.multiply(new BigDecimal("0.05"));
+        BigDecimal total = subtotal.add(tax).add(serviceFee);
+
+        try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+            ps.setBigDecimal(1, subtotal);
+            ps.setBigDecimal(2, tax);
+            ps.setBigDecimal(3, serviceFee);
+            ps.setBigDecimal(4, total);
+            ps.setInt(5, orderId);
+            ps.executeUpdate();
+        }
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("Order status is required");
+        }
+
+        String normalized = status.trim().toUpperCase();
+        if (!"OPEN".equals(normalized)
+            && !"SENT_TO_KITCHEN".equals(normalized)
+            && !"PAID".equals(normalized)
+            && !"VOID".equals(normalized)) {
+            throw new IllegalArgumentException("Unsupported order status: " + status);
+        }
+
+        return normalized;
+    }
+
+    private void rollbackQuietly(Connection conn) {
+        if (conn == null) {
+            return;
+        }
+        try {
+            conn.rollback();
+        } catch (SQLException ignored) {
+            // no-op
+        }
+    }
+
+    private void closeConnectionQuietly(Connection conn) {
+        if (conn == null) {
+            return;
+        }
+        try {
+            conn.setAutoCommit(true);
+            conn.close();
+        } catch (SQLException ignored) {
+            // no-op
         }
     }
 }

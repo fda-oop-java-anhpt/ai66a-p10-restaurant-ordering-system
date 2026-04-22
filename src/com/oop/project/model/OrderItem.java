@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class OrderItem {
+    private int id;
     private final MenuItem menuItem;
     private List<CustomizationOption> customizations;
     private int quantity;
@@ -19,6 +20,14 @@ public class OrderItem {
 
     public MenuItem getMenuItem() {
         return menuItem;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getMenuItemName() {
