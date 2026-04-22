@@ -445,6 +445,7 @@ public class OrderRepository {
             SELECT COALESCE(SUM(total), 0) AS total_revenue
             FROM orders
             WHERE created_at >= ? AND created_at < ?
+                            AND UPPER(COALESCE(order_status, 'OPEN')) NOT IN ('CANCELLED', 'CANCELED', 'VOID')
         """;
 
         try (Connection conn = DBConnection.getConnection();
@@ -468,6 +469,7 @@ public class OrderRepository {
             SELECT COUNT(*) AS order_count
             FROM orders
             WHERE created_at >= ? AND created_at < ?
+                            AND UPPER(COALESCE(order_status, 'OPEN')) NOT IN ('CANCELLED', 'CANCELED', 'VOID')
         """;
 
         try (Connection conn = DBConnection.getConnection();
@@ -517,7 +519,11 @@ public class OrderRepository {
             FROM menu_items m
             LEFT JOIN order_items oi ON m.id = oi.menu_item_id
             LEFT JOIN orders o ON oi.order_id = o.id
-            WHERE (o.created_at >= ? AND o.created_at < ?) OR o.created_at IS NULL
+            WHERE (
+                o.created_at >= ?
+                AND o.created_at < ?
+                AND UPPER(COALESCE(o.order_status, 'OPEN')) NOT IN ('CANCELLED', 'CANCELED', 'VOID')
+            ) OR o.created_at IS NULL
             GROUP BY m.id, m.name
             ORDER BY total_qty DESC
             LIMIT 10
@@ -549,7 +555,11 @@ public class OrderRepository {
             LEFT JOIN menu_items m ON mc.id = m.category_id
             LEFT JOIN order_items oi ON m.id = oi.menu_item_id
             LEFT JOIN orders o ON oi.order_id = o.id
-            WHERE (o.created_at >= ? AND o.created_at < ?) OR o.created_at IS NULL
+            WHERE (
+                o.created_at >= ?
+                AND o.created_at < ?
+                AND UPPER(COALESCE(o.order_status, 'OPEN')) NOT IN ('CANCELLED', 'CANCELED', 'VOID')
+            ) OR o.created_at IS NULL
             GROUP BY mc.id, mc.name
             ORDER BY category_revenue DESC
         """;

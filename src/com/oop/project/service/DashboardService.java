@@ -14,24 +14,41 @@ public class DashboardService {
     
     private final OrderRepository orderRepo = new OrderRepository();
 
+    private boolean isCancelled(Order order) {
+        if (order == null) {
+            return false;
+        }
+
+        String status = order.getOrderStatus();
+        return Order.STATUS_CANCELLED.equals(status)
+            || "CANCELED".equals(status)
+            || "VOID".equals(status);
+    }
+
+    private List<Order> excludeCancelled(List<Order> orders) {
+        return orders.stream()
+            .filter(order -> !isCancelled(order))
+            .collect(Collectors.toList());
+    }
+
     public List<Order> getTodaysOrders() {
-        return orderRepo.findByDate(LocalDate.now());
+        return excludeCancelled(orderRepo.findByDate(LocalDate.now()));
     }
 
     public List<Order> getOrdersByDate(LocalDate date) {
-        return orderRepo.findByDate(date);
+        return excludeCancelled(orderRepo.findByDate(date));
     }
 
     public List<Order> getOrdersByDateRange(LocalDate startDate, LocalDate endDate) {
-        return orderRepo.findByDateRange(startDate, endDate);
+        return excludeCancelled(orderRepo.findByDateRange(startDate, endDate));
     }
 
     public List<Order> getOrdersByPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
-        return orderRepo.findByPriceRange(minPrice, maxPrice);
+        return excludeCancelled(orderRepo.findByPriceRange(minPrice, maxPrice));
     }
 
     public List<Order> getOrdersByStaff(int staffId) {
-        return orderRepo.findByStaff(staffId);
+        return excludeCancelled(orderRepo.findByStaff(staffId));
     }
 
     public List<OrderItem> getOrderItems(int orderId) {
@@ -45,8 +62,11 @@ public class DashboardService {
     }
 
     public Map<String, Object> getDailyAnalytics(LocalDate date) {
-        int orderCount = orderRepo.countOrdersByDate(date);
-        BigDecimal totalRevenue = orderRepo.calculateDailyRevenue(date);
+        List<Order> nonCancelledOrders = getOrdersByDate(date);
+        int orderCount = nonCancelledOrders.size();
+        BigDecimal totalRevenue = nonCancelledOrders.stream()
+            .map(Order::getTotal)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal avgOrderValue = orderCount > 0 
             ? totalRevenue.divide(new BigDecimal(orderCount), 2, java.math.RoundingMode.HALF_UP)
             : BigDecimal.ZERO;
@@ -68,6 +88,7 @@ public class DashboardService {
 
     public List<Order> searchOrders(String keyword) {
         List<Order> allOrders = orderRepo.findAll().stream()
+            .filter(order -> !isCancelled(order))
             .map(this::getOrderWithItems)
             .collect(Collectors.toList());
         String searchTerm = keyword.toLowerCase().trim();
@@ -84,7 +105,7 @@ public class DashboardService {
     }
 
     public List<Order> filterOrders(LocalDate date, BigDecimal minPrice, BigDecimal maxPrice) {
-        return orderRepo.findByDateRange(date, date).stream()
+        return getOrdersByDateRange(date, date).stream()
             .filter(order -> order.getTotal().compareTo(minPrice) >= 0 
                          && order.getTotal().compareTo(maxPrice) <= 0)
             .collect(Collectors.toList());
