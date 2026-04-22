@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.format.DateTimeFormatter;
@@ -16,7 +17,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -26,6 +26,7 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 import com.oop.project.model.CustomizationOption;
@@ -38,7 +39,9 @@ import com.oop.project.ui.theme.ThemeFonts;
 
 public class ManagerOrdersPanel extends JPanel {
 
-    private static final String[] STATUS_OPTIONS = {"OPEN", "SENT_TO_KITCHEN", "PAID", "VOID"};
+    private static final Color STATUS_OPEN_COLOR = new Color(0x1565C0);
+    private static final Color STATUS_PAID_COLOR = new Color(0x1B8A3C);
+    private static final Color STATUS_CANCELLED_COLOR = new Color(0xC62828);
 
     private final User currentUser;
     private final OrderAdminService orderAdminService = new OrderAdminService();
@@ -49,8 +52,8 @@ public class ManagerOrdersPanel extends JPanel {
 
     private final JLabel totalOrdersValueLabel = new JLabel("0");
     private final JLabel openOrdersValueLabel = new JLabel("0");
-    private final JLabel kitchenOrdersValueLabel = new JLabel("0");
     private final JLabel paidOrdersValueLabel = new JLabel("0");
+    private final JLabel cancelledOrdersValueLabel = new JLabel("0");
 
     private final JTable ordersTable = new JTable();
     private final DefaultTableModel ordersModel = new DefaultTableModel(
@@ -74,10 +77,11 @@ public class ManagerOrdersPanel extends JPanel {
         }
     };
 
-    private final JComboBox<String> statusCombo = new JComboBox<>(STATUS_OPTIONS);
+    private final JLabel statusValueBadge = new JLabel("-");
     private final JLabel detailHeaderLabel = new JLabel("Select an order to view details");
 
-    private final JButton applyStatusBtn = new JButton("Update Status");
+    private final JButton markPaidBtn = new JButton("Mark Paid");
+    private final JButton cancelOrderBtn = new JButton("Cancel Order");
     private final JButton refreshBtn = new JButton("Refresh");
 
     private List<Order> visibleOrders = new ArrayList<>();
@@ -117,8 +121,8 @@ public class ManagerOrdersPanel extends JPanel {
 
         strip.add(createSummaryCard("Total Orders", totalOrdersValueLabel));
         strip.add(createSummaryCard("Open", openOrdersValueLabel));
-        strip.add(createSummaryCard("In Kitchen", kitchenOrdersValueLabel));
         strip.add(createSummaryCard("Paid", paidOrdersValueLabel));
+        strip.add(createSummaryCard("Cancelled", cancelledOrdersValueLabel));
 
         return strip;
     }
@@ -183,6 +187,7 @@ public class ManagerOrdersPanel extends JPanel {
         ordersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         ordersTable.setRowHeight(28);
         ordersTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        ordersTable.getColumnModel().getColumn(3).setCellRenderer(new StatusCellRenderer());
 
         JScrollPane ordersScroll = new JScrollPane(ordersTable);
         ordersScroll.setBorder(BorderFactory.createLineBorder(AppTheme.OUTLINE, 1));
@@ -214,18 +219,34 @@ public class ManagerOrdersPanel extends JPanel {
         statusLabel.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
         statusLabel.setForeground(AppTheme.TEXT_SECONDARY);
 
-        statusCombo.setFont(ThemeFonts.bodyMd());
-        statusCombo.setEnabled(false);
+        statusValueBadge.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        statusValueBadge.setOpaque(true);
+        statusValueBadge.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(AppTheme.OUTLINE, 1),
+            BorderFactory.createEmptyBorder(AppTheme.SPACE_1, AppTheme.SPACE_2, AppTheme.SPACE_1, AppTheme.SPACE_2)
+        ));
+        styleStatusBadge(null);
 
-        applyStatusBtn.setEnabled(false);
-        applyStatusBtn.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
-        applyStatusBtn.setBackground(new Color(0x1565C0));
-        applyStatusBtn.setForeground(Color.WHITE);
-        applyStatusBtn.setFocusPainted(false);
+        markPaidBtn.setEnabled(false);
+        markPaidBtn.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        markPaidBtn.setBackground(STATUS_OPEN_COLOR);
+        markPaidBtn.setForeground(Color.WHITE);
+        markPaidBtn.setFocusPainted(false);
+
+        cancelOrderBtn.setEnabled(false);
+        cancelOrderBtn.setFont(ThemeFonts.labelMd().deriveFont(Font.BOLD));
+        cancelOrderBtn.setBackground(STATUS_CANCELLED_COLOR);
+        cancelOrderBtn.setForeground(Color.WHITE);
+        cancelOrderBtn.setFocusPainted(false);
+
+        JPanel statusActionsPanel = new JPanel(new GridLayout(1, 2, AppTheme.SPACE_2, 0));
+        statusActionsPanel.setOpaque(false);
+        statusActionsPanel.add(markPaidBtn);
+        statusActionsPanel.add(cancelOrderBtn);
 
         statusRow.add(statusLabel, BorderLayout.WEST);
-        statusRow.add(statusCombo, BorderLayout.CENTER);
-        statusRow.add(applyStatusBtn, BorderLayout.EAST);
+        statusRow.add(statusValueBadge, BorderLayout.CENTER);
+        statusRow.add(statusActionsPanel, BorderLayout.EAST);
 
         top.add(detailHeaderLabel);
         top.add(Box.createVerticalStrut(AppTheme.SPACE_2));
@@ -285,7 +306,8 @@ public class ManagerOrdersPanel extends JPanel {
             }
         });
 
-        applyStatusBtn.addActionListener(e -> updateStatus());
+        markPaidBtn.addActionListener(e -> updateStatus(Order.STATUS_PAID));
+        cancelOrderBtn.addActionListener(e -> updateStatus(Order.STATUS_CANCELLED));
         refreshBtn.addActionListener(e -> refresh(selectedOrder == null ? null : selectedOrder.getId()));
     }
 
@@ -308,24 +330,23 @@ public class ManagerOrdersPanel extends JPanel {
     private void updateSummary() {
         int total = visibleOrders.size();
         int open = 0;
-        int kitchen = 0;
         int paid = 0;
+        int cancelled = 0;
 
         for (Order order : visibleOrders) {
-            String status = order.getOrderStatus();
-            if ("OPEN".equals(status)) {
+            if (order.isOpen()) {
                 open++;
-            } else if ("SENT_TO_KITCHEN".equals(status)) {
-                kitchen++;
-            } else if ("PAID".equals(status)) {
+            } else if (order.isPaid()) {
                 paid++;
+            } else if (order.isCancelled()) {
+                cancelled++;
             }
         }
 
         totalOrdersValueLabel.setText(String.valueOf(total));
         openOrdersValueLabel.setText(String.valueOf(open));
-        kitchenOrdersValueLabel.setText(String.valueOf(kitchen));
         paidOrdersValueLabel.setText(String.valueOf(paid));
+        cancelledOrdersValueLabel.setText(String.valueOf(cancelled));
     }
 
     private void fillOrdersTable(Integer preferredOrderId) {
@@ -351,8 +372,9 @@ public class ManagerOrdersPanel extends JPanel {
         if (ordersModel.getRowCount() == 0) {
             selectedOrder = null;
             detailHeaderLabel.setText("No orders found");
-            statusCombo.setEnabled(false);
-            applyStatusBtn.setEnabled(false);
+            markPaidBtn.setEnabled(false);
+            cancelOrderBtn.setEnabled(false);
+            styleStatusBadge(null);
             itemsModel.setRowCount(0);
             return;
         }
@@ -370,8 +392,9 @@ public class ManagerOrdersPanel extends JPanel {
         if (row < 0 || row >= visibleOrders.size()) {
             selectedOrder = null;
             detailHeaderLabel.setText("Select an order to view details");
-            statusCombo.setEnabled(false);
-            applyStatusBtn.setEnabled(false);
+            markPaidBtn.setEnabled(false);
+            cancelOrderBtn.setEnabled(false);
+            styleStatusBadge(null);
             itemsModel.setRowCount(0);
             return;
         }
@@ -383,9 +406,10 @@ public class ManagerOrdersPanel extends JPanel {
                 + formatCurrency(selectedOrder.getTotal())
         );
 
-        statusCombo.setSelectedItem(selectedOrder.getOrderStatus());
-        statusCombo.setEnabled(true);
-        applyStatusBtn.setEnabled(true);
+        styleStatusBadge(selectedOrder.getOrderStatus());
+        boolean open = selectedOrder.isOpen();
+        markPaidBtn.setEnabled(open);
+        cancelOrderBtn.setEnabled(open);
 
         fillItemsTable(selectedOrder);
     }
@@ -409,22 +433,75 @@ public class ManagerOrdersPanel extends JPanel {
         }
     }
 
-    private void updateStatus() {
+    private void updateStatus(String newStatus) {
         if (selectedOrder == null) {
             return;
         }
 
-        String selectedStatus = (String) statusCombo.getSelectedItem();
-        if (selectedStatus == null || selectedStatus.equals(selectedOrder.getOrderStatus())) {
+        if (!selectedOrder.isOpen()) {
             return;
         }
 
         try {
-            orderAdminService.updateOrderStatus(currentUser, selectedOrder.getId(), selectedStatus);
+            orderAdminService.updateOrderStatus(currentUser, selectedOrder.getId(), newStatus);
             refresh(selectedOrder.getId());
-            JOptionPane.showMessageDialog(this, "Order status updated.");
+            String action = Order.STATUS_PAID.equals(newStatus) ? "marked as paid" : "cancelled";
+            JOptionPane.showMessageDialog(this, "Order " + action + ".");
         } catch (RuntimeException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Update Status", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void styleStatusBadge(String status) {
+        if (status == null || status.isBlank()) {
+            statusValueBadge.setText("-");
+            statusValueBadge.setForeground(AppTheme.TEXT_SECONDARY);
+            statusValueBadge.setBackground(AppTheme.SURFACE_CONTAINER_LOWEST);
+            return;
+        }
+
+        statusValueBadge.setText(status);
+        Color color = getStatusColor(status);
+        statusValueBadge.setForeground(Color.WHITE);
+        statusValueBadge.setBackground(color);
+    }
+
+    private Color getStatusColor(String status) {
+        if (Order.STATUS_OPEN.equals(status)) {
+            return STATUS_OPEN_COLOR;
+        }
+        if (Order.STATUS_PAID.equals(status)) {
+            return STATUS_PAID_COLOR;
+        }
+        if (Order.STATUS_CANCELLED.equals(status)) {
+            return STATUS_CANCELLED_COLOR;
+        }
+        return AppTheme.TEXT_SECONDARY;
+    }
+
+    private class StatusCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public java.awt.Component getTableCellRendererComponent(
+            JTable table,
+            Object value,
+            boolean isSelected,
+            boolean hasFocus,
+            int row,
+            int column
+        ) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String status = value == null ? "" : value.toString();
+            setHorizontalAlignment(CENTER);
+            setText(status);
+
+            if (isSelected) {
+                setForeground(Color.WHITE);
+                setBackground(getStatusColor(status).darker());
+            } else {
+                setForeground(Color.WHITE);
+                setBackground(getStatusColor(status));
+            }
+            return this;
         }
     }
 

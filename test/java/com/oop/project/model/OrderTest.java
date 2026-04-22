@@ -1,13 +1,14 @@
 package com.oop.project.model;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class OrderTest {
@@ -27,10 +28,29 @@ class OrderTest {
             List.of()
         );
 
-        assertEquals("OPEN", order.getOrderStatus());
+        assertEquals(Order.STATUS_OPEN, order.getOrderStatus());
 
-        order.setOrderStatus("paid");
-        assertEquals("PAID", order.getOrderStatus());
+        order.setOrderStatus(Order.STATUS_PAID.toLowerCase());
+        assertEquals(Order.STATUS_PAID, order.getOrderStatus());
+    }
+
+    @Test
+    void status_transitionGate_allowsOnlyOpenToPaidOrCancelled() {
+        Order order = new Order();
+
+        order.setOrderStatus(Order.STATUS_OPEN);
+        assertTrue(order.canTransitionTo(Order.STATUS_PAID));
+        assertTrue(order.canTransitionTo(Order.STATUS_CANCELLED));
+        assertFalse(order.canTransitionTo(Order.STATUS_OPEN));
+
+        order.setOrderStatus(Order.STATUS_PAID);
+        assertFalse(order.canTransitionTo(Order.STATUS_CANCELLED));
+
+        order.setOrderStatus(Order.STATUS_CANCELLED);
+        assertFalse(order.canTransitionTo(Order.STATUS_PAID));
+
+        order.setOrderStatus("UNKNOWN");
+        assertFalse(order.canTransitionTo(Order.STATUS_PAID));
     }
 
     @Test

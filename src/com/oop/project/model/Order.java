@@ -6,6 +6,10 @@ import java.util.List;
 
 public class Order {
 
+    public static final String STATUS_OPEN = "OPEN";
+    public static final String STATUS_PAID = "PAID";
+    public static final String STATUS_CANCELLED = "CANCELLED";
+
     private int id;
     private int staffId;
     private String staffName;
@@ -134,9 +138,27 @@ public class Order {
         this.items.add(item);
     }
 
+    public boolean canTransitionTo(String newStatus) {
+        String normalizedNewStatus = normalizeStatus(newStatus);
+        return STATUS_OPEN.equals(getOrderStatus())
+            && (STATUS_PAID.equals(normalizedNewStatus) || STATUS_CANCELLED.equals(normalizedNewStatus));
+    }
+
+    public boolean isOpen() {
+        return STATUS_OPEN.equals(getOrderStatus());
+    }
+
+    public boolean isPaid() {
+        return STATUS_PAID.equals(getOrderStatus());
+    }
+
+    public boolean isCancelled() {
+        return STATUS_CANCELLED.equals(getOrderStatus());
+    }
+
     private String normalizeStatus(String status) {
         if (status == null || status.isBlank()) {
-            return "OPEN";
+            return STATUS_OPEN;
         }
         return status.trim().toUpperCase();
     }

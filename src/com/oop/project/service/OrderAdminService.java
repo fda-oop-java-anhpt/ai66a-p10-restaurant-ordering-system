@@ -58,9 +58,19 @@ public class OrderAdminService {
             .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    public void updateOrderStatus(User manager, int orderId, String status) {
+    public void updateOrderStatus(User manager, int orderId, String newStatus) {
         requireManager(manager);
-        orderRepository.updateOrderStatus(orderId, status);
+
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order #" + orderId + " not found"));
+
+        if (!order.canTransitionTo(newStatus)) {
+            throw new IllegalStateException(
+                "Cannot transition from '" + order.getOrderStatus() + "' to '" + newStatus + "'"
+            );
+        }
+
+        orderRepository.updateOrderStatus(orderId, newStatus);
     }
 
     public void updateOrderItem(User manager, int orderId, int orderItemId, int menuItemId, int quantity, List<Integer> customizationIds) {

@@ -87,8 +87,8 @@ CREATE TABLE orders (
   table_number INTEGER,
   payment_method VARCHAR(10) NOT NULL DEFAULT 'CASH'
     CHECK (payment_method IN ('CARD', 'CASH')),
-  order_status VARCHAR(20) NOT NULL DEFAULT 'PAID'
-    CHECK (order_status IN ('OPEN', 'SENT_TO_KITCHEN', 'PAID', 'VOID')),
+  order_status VARCHAR(20) NOT NULL DEFAULT 'OPEN'
+    CHECK (order_status IN ('OPEN', 'PAID', 'CANCELLED')),
   subtotal NUMERIC(12,2) NOT NULL DEFAULT 0,
   tax NUMERIC(12,2) NOT NULL DEFAULT 0,
   service_fee NUMERIC(12,2) NOT NULL DEFAULT 0,

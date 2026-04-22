@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.oop.project.db.DBConnection;
 import com.oop.project.model.CustomizationOption;
@@ -234,6 +235,39 @@ public class OrderRepository {
             e.printStackTrace();
         }
         return orders;
+    }
+
+    public Optional<Order> findById(int orderId) {
+        String sql = """
+            SELECT
+                o.id,
+                o.staff_id,
+                u.username AS staff_name,
+                o.order_status,
+                o.subtotal,
+                o.tax,
+                o.service_fee,
+                o.total,
+                o.created_at
+            FROM orders o
+            JOIN users u ON o.staff_id = u.id
+            WHERE o.id = ?
+        """;
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapOrder(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Cannot find order by id", e);
+        }
+
+        return Optional.empty();
     }
 
     public List<OrderItem> findOrderItems(int orderId) {
@@ -733,10 +767,9 @@ public class OrderRepository {
         }
 
         String normalized = status.trim().toUpperCase();
-        if (!"OPEN".equals(normalized)
-            && !"SENT_TO_KITCHEN".equals(normalized)
-            && !"PAID".equals(normalized)
-            && !"VOID".equals(normalized)) {
+        if (!Order.STATUS_OPEN.equals(normalized)
+            && !Order.STATUS_PAID.equals(normalized)
+            && !Order.STATUS_CANCELLED.equals(normalized)) {
             throw new IllegalArgumentException("Unsupported order status: " + status);
         }
 

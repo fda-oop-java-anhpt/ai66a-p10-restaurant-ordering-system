@@ -4,17 +4,22 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oop.project.exception.UnauthorizedException;
 import com.oop.project.model.CustomizationOption;
 import com.oop.project.model.MenuItem;
+import com.oop.project.model.Order;
 import com.oop.project.model.OrderDraft;
 import com.oop.project.model.OrderItem;
+import com.oop.project.model.User;
 import com.oop.project.repository.CustomizationOptionRepository;
 import com.oop.project.repository.MenuItemRepository;
+import com.oop.project.repository.OrderRepository;
 
 public class OrderService {
 
     private final MenuItemRepository menuItemRepository = new MenuItemRepository();
     private final CustomizationOptionRepository customizationOptionRepository = new CustomizationOptionRepository();
+    private final OrderRepository orderRepository = new OrderRepository();
 
     public OrderDraft createOrder(int staffId) {
         return new OrderDraft(staffId);
@@ -80,5 +85,22 @@ public class OrderService {
         BigDecimal tax = calculateTax(subtotal);
         BigDecimal fee = calculateServiceFee(subtotal);
         return subtotal.add(tax).add(fee);
+    }
+
+    public void updateOrderStatus(User staff, int orderId, String newStatus) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order #" + orderId + " not found"));
+
+        if (staff == null || order.getStaffId() != staff.getId()) {
+            throw new UnauthorizedException("Staff can only update their own orders");
+        }
+
+        if (!order.canTransitionTo(newStatus)) {
+            throw new IllegalStateException(
+                "Cannot transition from '" + order.getOrderStatus() + "' to '" + newStatus + "'"
+            );
+        }
+
+        orderRepository.updateOrderStatus(orderId, newStatus);
     }
 }
