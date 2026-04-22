@@ -11,11 +11,17 @@ public class OrderItem {
     private final MenuItem menuItem;
     private List<CustomizationOption> customizations;
     private int quantity;
+    private String note;
 
     public OrderItem(MenuItem menuItem, List<CustomizationOption> customizations, int quantity) {
+        this(menuItem, customizations, quantity, "");
+    }
+
+    public OrderItem(MenuItem menuItem, List<CustomizationOption> customizations, int quantity, String note) {
         this.menuItem = menuItem;
         this.customizations = new ArrayList<>(customizations);
         this.quantity = quantity;
+        setNote(note);
     }
 
     public MenuItem getMenuItem() {
@@ -48,6 +54,14 @@ public class OrderItem {
 
     public void setCustomizations(List<CustomizationOption> customizations) {
         this.customizations = new ArrayList<>(customizations);
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note == null ? "" : note.trim();
     }
 
     public BigDecimal getCustomizationTotal() {

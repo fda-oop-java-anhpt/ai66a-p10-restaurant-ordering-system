@@ -244,7 +244,8 @@ public class OrderRepository {
                 oi.menu_item_id,
                 m.name AS menu_item_name,
                 oi.quantity,
-                oi.unit_price
+                oi.unit_price,
+                oi.note
             FROM order_items oi
             JOIN menu_items m ON oi.menu_item_id = m.id
             WHERE oi.order_id = ?
@@ -565,7 +566,8 @@ public class OrderRepository {
         OrderItem item = new OrderItem(
             menuItem,
             customizations,
-            rs.getInt("quantity")
+            rs.getInt("quantity"),
+            rs.getString("note")
         );
         item.setId(orderItemId);
         return item;
@@ -580,9 +582,9 @@ public class OrderRepository {
             int orderId = createOrderHeader(conn, staffId, subtotal, tax, serviceFee, total);
 
             for (OrderItem item : draft.getItems()) {
-                addOrderItem(conn, orderId, item.getMenuItem().getId(), item.getQuantity(), item.getUnitPrice());
+                int orderItemId = addOrderItem(conn, orderId, item.getMenuItem().getId(), item.getQuantity(), item.getUnitPrice(), item.getNote());
                 for (com.oop.project.model.CustomizationOption customization : item.getCustomizations()) {
-                    addOrderItemCustomization(conn, orderId, item.getMenuItem().getId(), customization.getId());
+                    addOrderItemCustomization(conn, orderId, orderItemId, item.getMenuItem().getId(), customization.getId());
                 }
             }
 
@@ -632,28 +634,36 @@ public class OrderRepository {
         throw new SQLException("Failed to insert order header");
     }
 
-    private void addOrderItem(Connection conn, int orderId, int menuItemId, int quantity, BigDecimal unitPrice) throws SQLException {
-        String sql = "INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price) VALUES (?, ?, ?, ?)";
+    private int addOrderItem(Connection conn, int orderId, int menuItemId, int quantity, BigDecimal unitPrice, String note) throws SQLException {
+        String sql = "INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, note) VALUES (?, ?, ?, ?, ?) RETURNING id";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, orderId);
             ps.setInt(2, menuItemId);
             ps.setInt(3, quantity);
             ps.setBigDecimal(4, unitPrice);
-            ps.executeUpdate();
+            ps.setString(5, note == null ? "" : note.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
         }
+
+        throw new SQLException("Failed to insert order item");
     }
 
-    private void addOrderItemCustomization(Connection conn, int orderId, int menuItemId, int customizationId) throws SQLException {
+    private void addOrderItemCustomization(Connection conn, int orderId, int orderItemId, int menuItemId, int customizationId) throws SQLException {
         String sql = """
-            INSERT INTO order_item_customizations (order_id, menu_item_id, customization_id)
-            VALUES (?, ?, ?)
+            INSERT INTO order_item_customizations (order_id, order_item_id, menu_item_id, customization_id)
+            VALUES (?, ?, ?, ?)
         """;
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, orderId);
-            ps.setInt(2, menuItemId);
-            ps.setInt(3, customizationId);
+            ps.setInt(2, orderItemId);
+            ps.setInt(3, menuItemId);
+            ps.setInt(4, customizationId);
             ps.executeUpdate();
         }
     }

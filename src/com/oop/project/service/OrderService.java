@@ -29,13 +29,21 @@ public class OrderService {
     }
 
     public void addItem(OrderDraft draft, MenuItem menuItem, List<CustomizationOption> customizations, int quantity) {
+        addItem(draft, menuItem, customizations, quantity, "");
+    }
+
+    public void addItem(OrderDraft draft, MenuItem menuItem, List<CustomizationOption> customizations, int quantity, String note) {
         validateQuantity(quantity);
-        draft.addItem(new OrderItem(menuItem, customizations, quantity));
+        draft.addItem(new OrderItem(menuItem, customizations, quantity, note));
     }
 
     public void replaceItem(OrderDraft draft, int index, MenuItem menuItem, List<CustomizationOption> customizations, int quantity) {
+        replaceItem(draft, index, menuItem, customizations, quantity, "");
+    }
+
+    public void replaceItem(OrderDraft draft, int index, MenuItem menuItem, List<CustomizationOption> customizations, int quantity, String note) {
         validateQuantity(quantity);
-        draft.replaceItem(index, new OrderItem(menuItem, customizations, quantity));
+        draft.replaceItem(index, new OrderItem(menuItem, customizations, quantity, note));
     }
 
     public void removeItem(OrderDraft draft, int index) {

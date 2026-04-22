@@ -109,6 +109,7 @@ CREATE TABLE order_items (
   menu_item_id INTEGER NOT NULL,
   quantity INTEGER NOT NULL CHECK (quantity > 0),
   unit_price NUMERIC(12,2) NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
   CONSTRAINT fk_orderitem_order
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   CONSTRAINT fk_orderitem_menuitem
