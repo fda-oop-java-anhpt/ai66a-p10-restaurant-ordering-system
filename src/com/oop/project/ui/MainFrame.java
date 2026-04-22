@@ -26,6 +26,7 @@ import com.oop.project.service.AuthService;
 import com.oop.project.service.OrderService;
 import com.oop.project.ui.panels.CartPanel;
 import com.oop.project.ui.panels.DashboardPanel;
+import com.oop.project.ui.panels.ManagerOrdersPanel;
 import com.oop.project.ui.panels.MenuPanel;
 import com.oop.project.ui.panels.OrdersPanel;
 import com.oop.project.ui.theme.AppTheme;
@@ -44,7 +45,9 @@ public class MainFrame extends JFrame {
     private final OrderDraft sharedOrderDraft;
 
     private MenuPanel menuPanel;
-    private OrdersPanel ordersPanel;
+    private OrdersPanel staffOrdersPanel;
+    private ManagerOrdersPanel managerOrdersPanel;
+    private JPanel ordersPanel;
     private CartPanel cartPanel;
     private DashboardPanel dashboardPanel;
 
@@ -76,15 +79,21 @@ public class MainFrame extends JFrame {
     }
 
     private void initPanels() {
-        ordersPanel = new OrdersPanel(currentUser, sharedOrderDraft, this::refreshCart);
+        if (currentUser.isManager()) {
+            managerOrdersPanel = new ManagerOrdersPanel(currentUser);
+            ordersPanel = managerOrdersPanel;
+        } else {
+            staffOrdersPanel = new OrdersPanel(currentUser, sharedOrderDraft, this::refreshCart);
+            ordersPanel = staffOrdersPanel;
+        }
+
         cartPanel = new CartPanel(currentUser, sharedOrderDraft, this::onCartUpdated);
 
         menuPanel = new MenuPanel(
             currentUser,
             sharedOrderDraft,
             () -> {
-                ordersPanel.reloadMenuItems();
-                ordersPanel.refresh();
+                refreshOrdersPanelOnMenuChanged();
             },
             this::refreshCart
         );
@@ -298,7 +307,7 @@ public class MainFrame extends JFrame {
         cardLayout.show(contentPanel, key);
 
         if (SCREEN_ORDERS.equals(key)) {
-            ordersPanel.refresh();
+            refreshOrdersPanel();
         } else if (SCREEN_CART.equals(key)) {
             cartPanel.refresh();
         } else if (SCREEN_DASHBOARD.equals(key) && dashboardPanel != null) {
@@ -385,7 +394,7 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        ordersPanel.refresh();
+        refreshOrdersPanel();
 
         if (SCREEN_DASHBOARD.equals(activeScreen) && dashboardPanel != null) {
             dashboardPanel.refreshDashboardData();
@@ -396,5 +405,32 @@ public class MainFrame extends JFrame {
         authService.logout(currentUser);
         dispose();
         new LoginFrame().setVisible(true);
+    }
+
+    private void refreshOrdersPanelOnMenuChanged() {
+        if (currentUser.isManager()) {
+            if (managerOrdersPanel != null) {
+                managerOrdersPanel.refresh();
+            }
+            return;
+        }
+
+        if (staffOrdersPanel != null) {
+            staffOrdersPanel.reloadMenuItems();
+            staffOrdersPanel.refresh();
+        }
+    }
+
+    private void refreshOrdersPanel() {
+        if (currentUser.isManager()) {
+            if (managerOrdersPanel != null) {
+                managerOrdersPanel.refresh();
+            }
+            return;
+        }
+
+        if (staffOrdersPanel != null) {
+            staffOrdersPanel.refresh();
+        }
     }
 }
