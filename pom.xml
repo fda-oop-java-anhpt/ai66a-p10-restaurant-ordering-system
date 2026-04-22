@@ -21,11 +21,18 @@
       <artifactId>postgresql</artifactId>
       <version>42.7.3</version>
     </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.3</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
     <!-- Source code is under src/ (non-standard layout) -->
     <sourceDirectory>src</sourceDirectory>
+    <testSourceDirectory>test/java</testSourceDirectory>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -35,6 +42,11 @@
           <source>17</source>
           <target>17</target>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
