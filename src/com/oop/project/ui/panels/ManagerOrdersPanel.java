@@ -9,26 +9,21 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
@@ -83,8 +78,6 @@ public class ManagerOrdersPanel extends JPanel {
     private final JLabel detailHeaderLabel = new JLabel("Select an order to view details");
 
     private final JButton applyStatusBtn = new JButton("Update Status");
-    private final JButton editItemBtn = new JButton("Edit Selected Item");
-    private final JButton removeItemBtn = new JButton("Remove Selected Item");
     private final JButton refreshBtn = new JButton("Refresh");
 
     private List<Order> visibleOrders = new ArrayList<>();
@@ -249,17 +242,10 @@ public class ManagerOrdersPanel extends JPanel {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, AppTheme.SPACE_2, 0));
         actions.setOpaque(false);
 
-        editItemBtn.setEnabled(false);
-        removeItemBtn.setEnabled(false);
-
-        styleActionButton(editItemBtn, new Color(0x2E7D32));
-        styleActionButton(removeItemBtn, AppTheme.ERROR);
         styleActionButton(refreshBtn, AppTheme.SURFACE_CONTAINER_HIGH);
         refreshBtn.setForeground(AppTheme.TEXT_PRIMARY);
 
         actions.add(refreshBtn);
-        actions.add(editItemBtn);
-        actions.add(removeItemBtn);
 
         panel.add(top, BorderLayout.NORTH);
         panel.add(itemsScroll, BorderLayout.CENTER);
@@ -299,17 +285,7 @@ public class ManagerOrdersPanel extends JPanel {
             }
         });
 
-        itemsTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                boolean hasSelection = getSelectedOrderItem() != null;
-                editItemBtn.setEnabled(hasSelection);
-                removeItemBtn.setEnabled(hasSelection);
-            }
-        });
-
         applyStatusBtn.addActionListener(e -> updateStatus());
-        editItemBtn.addActionListener(e -> editSelectedItem());
-        removeItemBtn.addActionListener(e -> removeSelectedItem());
         refreshBtn.addActionListener(e -> refresh(selectedOrder == null ? null : selectedOrder.getId()));
     }
 
@@ -378,8 +354,6 @@ public class ManagerOrdersPanel extends JPanel {
             statusCombo.setEnabled(false);
             applyStatusBtn.setEnabled(false);
             itemsModel.setRowCount(0);
-            editItemBtn.setEnabled(false);
-            removeItemBtn.setEnabled(false);
             return;
         }
 
@@ -433,8 +407,6 @@ public class ManagerOrdersPanel extends JPanel {
         if (hasItems) {
             itemsTable.setRowSelectionInterval(0, 0);
         }
-        editItemBtn.setEnabled(hasItems);
-        removeItemBtn.setEnabled(hasItems);
     }
 
     private void updateStatus() {
@@ -454,147 +426,6 @@ public class ManagerOrdersPanel extends JPanel {
         } catch (RuntimeException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Update Status", JOptionPane.ERROR_MESSAGE);
         }
-    }
-
-    private void editSelectedItem() {
-        if (selectedOrder == null) {
-            return;
-        }
-
-        OrderItem selectedItem = getSelectedOrderItem();
-        if (selectedItem == null) {
-            JOptionPane.showMessageDialog(this, "Please select an item to edit.", "Edit Item", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        List<CustomizationOption> availableOptions =
-            orderAdminService.getCustomizationOptionsForMenuItem(selectedItem.getMenuItem().getId());
-
-        JSpinner quantitySpinner = new JSpinner(new SpinnerNumberModel(selectedItem.getQuantity(), 1, 999, 1));
-
-        JPanel customizationsPanel = new JPanel();
-        customizationsPanel.setLayout(new BoxLayout(customizationsPanel, BoxLayout.Y_AXIS));
-        customizationsPanel.setOpaque(false);
-
-        Set<Integer> selectedOptionIds = selectedItem.getCustomizations()
-            .stream()
-            .map(CustomizationOption::getId)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
-
-        List<JCheckBox> optionChecks = new ArrayList<>();
-        for (CustomizationOption option : availableOptions) {
-            JCheckBox optionCheck = new JCheckBox(formatCustomizationOption(option));
-            optionCheck.putClientProperty("optionId", option.getId());
-            optionCheck.setSelected(selectedOptionIds.contains(option.getId()));
-            optionChecks.add(optionCheck);
-            customizationsPanel.add(optionCheck);
-        }
-
-        JScrollPane customizationsScroll = new JScrollPane(customizationsPanel);
-        customizationsScroll.setPreferredSize(new Dimension(320, 160));
-
-        JPanel form = new JPanel();
-        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-
-        JLabel qtyLabel = new JLabel("Quantity");
-        qtyLabel.setAlignmentX(LEFT_ALIGNMENT);
-        quantitySpinner.setAlignmentX(LEFT_ALIGNMENT);
-
-        JLabel customLabel = new JLabel("Customization options");
-        customLabel.setAlignmentX(LEFT_ALIGNMENT);
-        customizationsScroll.setAlignmentX(LEFT_ALIGNMENT);
-
-        form.add(qtyLabel);
-        form.add(Box.createVerticalStrut(AppTheme.SPACE_1));
-        form.add(quantitySpinner);
-        form.add(Box.createVerticalStrut(AppTheme.SPACE_3));
-        form.add(customLabel);
-        form.add(Box.createVerticalStrut(AppTheme.SPACE_1));
-        form.add(customizationsScroll);
-
-        int result = JOptionPane.showConfirmDialog(
-            this,
-            form,
-            "Edit Item in Order #" + selectedOrder.getId(),
-            JOptionPane.OK_CANCEL_OPTION,
-            JOptionPane.PLAIN_MESSAGE
-        );
-
-        if (result != JOptionPane.OK_OPTION) {
-            return;
-        }
-
-        List<Integer> newOptionIds = new ArrayList<>();
-        for (JCheckBox check : optionChecks) {
-            if (check.isSelected()) {
-                Object optionId = check.getClientProperty("optionId");
-                if (optionId instanceof Integer id) {
-                    newOptionIds.add(id);
-                }
-            }
-        }
-
-        int quantity = (Integer) quantitySpinner.getValue();
-
-        try {
-            orderAdminService.updateOrderItem(
-                currentUser,
-                selectedOrder.getId(),
-                selectedItem.getId(),
-                selectedItem.getMenuItem().getId(),
-                quantity,
-                newOptionIds
-            );
-            refresh(selectedOrder.getId());
-            JOptionPane.showMessageDialog(this, "Order item updated.");
-        } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Edit Item", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void removeSelectedItem() {
-        if (selectedOrder == null) {
-            return;
-        }
-
-        OrderItem selectedItem = getSelectedOrderItem();
-        if (selectedItem == null) {
-            JOptionPane.showMessageDialog(this, "Please select an item to remove.", "Remove Item", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        int confirm = JOptionPane.showConfirmDialog(
-            this,
-            "Remove item \"" + selectedItem.getMenuItemName() + "\" from order #" + selectedOrder.getId() + "?",
-            "Remove Item",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            orderAdminService.removeOrderItem(currentUser, selectedOrder.getId(), selectedItem.getId());
-            refresh(selectedOrder.getId());
-            JOptionPane.showMessageDialog(this, "Item removed from order.");
-        } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Remove Item", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private OrderItem getSelectedOrderItem() {
-        if (selectedOrder == null) {
-            return null;
-        }
-
-        int row = itemsTable.getSelectedRow();
-        if (row < 0 || row >= selectedOrder.getItems().size()) {
-            return null;
-        }
-
-        return selectedOrder.getItems().get(row);
     }
 
     private String summarizeCustomizations(OrderItem orderItem) {
