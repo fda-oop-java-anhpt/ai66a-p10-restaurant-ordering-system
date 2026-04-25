@@ -512,19 +512,18 @@ public class DashboardPanel extends JPanel {
 
     private void updateHourlyPerformanceChart() {
         Map<Integer, BigDecimal> hourlyRevenue = new LinkedHashMap<>();
-        for (int hour = 12; hour <= 20; hour++) {
+        for (int hour = 0; hour < 24; hour++) {
             hourlyRevenue.put(hour, BigDecimal.ZERO);
         }
 
         for (Order order : loadedOrders) {
-            if (order.getCreatedAt() == null) {
+            LocalDateTime createdAt = order.getCreatedAt();
+            if (createdAt == null) {
                 continue;
             }
-            int hour = order.getCreatedAt().getHour();
-            if (!hourlyRevenue.containsKey(hour)) {
-                continue;
-            }
-            hourlyRevenue.put(hour, hourlyRevenue.get(hour).add(order.getTotal()));
+            int hour = createdAt.getHour();
+            BigDecimal total = order.getTotal() == null ? BigDecimal.ZERO : order.getTotal();
+            hourlyRevenue.put(hour, hourlyRevenue.get(hour).add(total));
         }
 
         hourlyChartPanel.setHourlyRevenue(hourlyRevenue);
@@ -1089,7 +1088,7 @@ public class DashboardPanel extends JPanel {
         HourlyChartPanel() {
             setOpaque(false);
             setPreferredSize(new Dimension(0, 250));
-            for (int hour = 12; hour <= 20; hour++) {
+            for (int hour = 0; hour < 24; hour++) {
                 hourlyRevenue.put(hour, BigDecimal.ZERO);
             }
         }
@@ -1107,10 +1106,10 @@ public class DashboardPanel extends JPanel {
 
             int width = getWidth();
             int height = getHeight();
-            int left = 12;
-            int right = 12;
-            int bottom = 24;
-            int top = 16;
+            int left = 14;
+            int right = 14;
+            int bottom = 34;
+            int top = 18;
 
             List<Map.Entry<Integer, BigDecimal>> entries = new ArrayList<>(hourlyRevenue.entrySet());
             int n = entries.size();
@@ -1119,51 +1118,83 @@ public class DashboardPanel extends JPanel {
                 return;
             }
 
+            int chartW = Math.max(1, width - left - right);
+            int chartH = Math.max(1, height - top - bottom);
+
+            g2.setColor(new Color(0xE3E9EF));
+            g2.drawLine(left, top + chartH, left + chartW, top + chartH);
+
             BigDecimal max = BigDecimal.ZERO;
-            int peakIndex = 0;
-            for (int i = 0; i < entries.size(); i++) {
-                BigDecimal v = entries.get(i).getValue();
-                if (v.compareTo(max) > 0) {
-                    max = v;
+            int peakIndex = -1;
+            for (int i = 0; i < n; i++) {
+                BigDecimal value = entries.get(i).getValue();
+                BigDecimal safeValue = value == null ? BigDecimal.ZERO : value;
+                if (safeValue.compareTo(max) > 0) {
+                    max = safeValue;
                     peakIndex = i;
                 }
             }
 
-            if (max.compareTo(BigDecimal.ZERO) == 0) {
+            boolean hasRevenue = max.compareTo(BigDecimal.ZERO) > 0;
+            if (!hasRevenue) {
                 max = BigDecimal.ONE;
             }
 
-            int chartW = width - left - right;
-            int chartH = height - top - bottom;
-            int gap = 4;
-            int barW = Math.max(8, (chartW - gap * (n - 1)) / n);
+            double slotWidth = chartW / (double) Math.max(1, n);
+            int barW = Math.max(2, (int) Math.floor(slotWidth * 0.68));
+            int labelStep = n > 18 ? 3 : (n > 12 ? 2 : 1);
 
-            Color[] palette = {
-                new Color(0xD1D7DE), new Color(0xBCC4CD), new Color(0xAEB8C2),
-                new Color(0x9DA8B4), new Color(0x7D8A99), new Color(0x132A40),
-                new Color(0x475565), new Color(0x7E8D9C), new Color(0xA8B2BC)
-            };
+            Color zeroBar = new Color(0xD8E0E8);
+            Color upBar = new Color(0x2E7D32);
+            Color downBar = new Color(0xC62828);
+            Color flatBar = new Color(0x8899AA);
+            Color peakOutline = new Color(0x132A40);
 
             for (int i = 0; i < n; i++) {
-                BigDecimal v = entries.get(i).getValue();
-                double ratio = v.divide(max, 4, RoundingMode.HALF_UP).doubleValue();
-                int barH = Math.max(6, (int) Math.round(chartH * ratio));
-                int x = left + i * (barW + gap);
+                BigDecimal value = entries.get(i).getValue();
+                BigDecimal safeValue = value == null ? BigDecimal.ZERO : value;
+                double ratio = safeValue.divide(max, 4, RoundingMode.HALF_UP).doubleValue();
+                BigDecimal previousValue = i == 0
+                    ? null
+                    : (entries.get(i - 1).getValue() == null ? BigDecimal.ZERO : entries.get(i - 1).getValue());
+
+                int barH;
+                if (!hasRevenue || safeValue.compareTo(BigDecimal.ZERO) <= 0) {
+                    barH = 4;
+                } else {
+                    barH = Math.max(8, (int) Math.round(chartH * ratio));
+                }
+
+                int x = left + (int) Math.round(i * slotWidth + (slotWidth - barW) / 2.0);
                 int y = top + chartH - barH;
 
-                Color barColor = i == peakIndex ? new Color(0x132A40) : palette[Math.min(i, palette.length - 1)];
+                Color barColor;
+                if (!hasRevenue || safeValue.compareTo(BigDecimal.ZERO) <= 0) {
+                    barColor = zeroBar;
+                } else {
+                    barColor = resolveTrendColor(safeValue, previousValue, upBar, downBar, flatBar);
+                }
+
                 g2.setColor(barColor);
                 g2.fillRoundRect(x, y, barW, barH, 4, 4);
 
-                int hour = entries.get(i).getKey();
-                g2.setColor(TEXT_SECONDARY);
-                g2.setFont(ThemeFonts.labelSm());
-                String label = formatHour(hour);
-                int tw = g2.getFontMetrics().stringWidth(label);
-                g2.drawString(label, x + (barW - tw) / 2, top + chartH + 16);
+                if (hasRevenue && i == peakIndex) {
+                    g2.setColor(peakOutline);
+                    g2.drawRoundRect(x, y, Math.max(1, barW - 1), Math.max(1, barH - 1), 4, 4);
+                }
+
+                if (shouldDrawHourLabel(i, labelStep, peakIndex, n)) {
+                    int hour = entries.get(i).getKey();
+                    g2.setColor(TEXT_SECONDARY);
+                    g2.setFont(ThemeFonts.labelSm());
+                    String label = formatHour(hour);
+                    int tw = g2.getFontMetrics().stringWidth(label);
+                    int labelCenter = left + (int) Math.round(i * slotWidth + slotWidth / 2.0);
+                    g2.drawString(label, labelCenter - tw / 2, top + chartH + 18);
+                }
             }
 
-            if (peakIndex >= 0 && peakIndex < entries.size()) {
+            if (hasRevenue && peakIndex >= 0 && peakIndex < entries.size()) {
                 int peakHour = entries.get(peakIndex).getKey();
                 String badge = formatHour(peakHour) + " Peak";
                 g2.setFont(ThemeFonts.labelSm().deriveFont(Font.BOLD));
@@ -1171,16 +1202,50 @@ public class DashboardPanel extends JPanel {
                 int badgeW = tw + 10;
                 int badgeH = 18;
 
-                int x = left + peakIndex * (barW + gap) + (barW - badgeW) / 2;
-                int y = Math.max(0, top - badgeH - 4);
+                int peakCenter = left + (int) Math.round(peakIndex * slotWidth + slotWidth / 2.0);
+                int x = peakCenter - (badgeW / 2);
+                x = Math.max(left, Math.min(x, left + chartW - badgeW));
+                int y = Math.max(2, top - badgeH - 6);
 
                 g2.setColor(new Color(0x1C2837));
                 g2.fillRoundRect(x, y, badgeW, badgeH, 8, 8);
                 g2.setColor(Color.WHITE);
                 g2.drawString(badge, x + 5, y + 13);
+            } else {
+                String emptyText = "No orders in selected period";
+                g2.setFont(ThemeFonts.labelMd());
+                g2.setColor(TEXT_SECONDARY);
+                int tw = g2.getFontMetrics().stringWidth(emptyText);
+                g2.drawString(emptyText, left + Math.max(0, (chartW - tw) / 2), top + chartH / 2);
             }
 
             g2.dispose();
+        }
+
+        private boolean shouldDrawHourLabel(int index, int step, int peakIndex, int total) {
+            if (index == 0 || index == total - 1 || index == peakIndex) {
+                return true;
+            }
+            return index % Math.max(1, step) == 0;
+        }
+
+        private Color resolveTrendColor(BigDecimal current,
+                                        BigDecimal previous,
+                                        Color upBar,
+                                        Color downBar,
+                                        Color flatBar) {
+            if (previous == null) {
+                return flatBar;
+            }
+
+            int trend = current.compareTo(previous);
+            if (trend > 0) {
+                return upBar;
+            }
+            if (trend < 0) {
+                return downBar;
+            }
+            return flatBar;
         }
 
         private String formatHour(int hour) {
