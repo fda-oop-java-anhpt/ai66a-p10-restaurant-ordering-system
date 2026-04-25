@@ -815,6 +815,7 @@ public class OrdersPanel extends JPanel {
 
     private JPanel buildMenuCard(MenuItem item) {
         boolean selected = isSelectedMenuItem(item.getId());
+        final int cardHeight = 96;
 
         // Outer card — white background, bottom border only
         JPanel card = new JPanel(new BorderLayout(AppTheme.SPACE_3, 0));
@@ -825,6 +826,9 @@ public class OrdersPanel extends JPanel {
                 AppTheme.SPACE_3, AppTheme.SPACE_3,
                 AppTheme.SPACE_3, AppTheme.SPACE_3)
         ));
+            card.setPreferredSize(new Dimension(0, cardHeight));
+            card.setMinimumSize(new Dimension(220, cardHeight));
+            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, cardHeight));
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         if (selected) {
             card.setBackground(new Color(0xEFF3FB));
@@ -859,6 +863,11 @@ public class OrdersPanel extends JPanel {
         iconBox.setPreferredSize(new Dimension(40, 40));
         iconBox.setMaximumSize(new Dimension(40, 40));
         iconBox.setOpaque(false);
+
+        JPanel iconWrap = new JPanel(new java.awt.GridBagLayout());
+        iconWrap.setOpaque(false);
+        iconWrap.setPreferredSize(new Dimension(52, cardHeight));
+        iconWrap.add(iconBox);
 
         // Item info
         JPanel info = new JPanel();
@@ -902,7 +911,15 @@ public class OrdersPanel extends JPanel {
                 AppTheme.SPACE_1, AppTheme.SPACE_3,
                 AppTheme.SPACE_1, AppTheme.SPACE_3)
         ));
+        customizeBtn.setPreferredSize(new Dimension(120, 36));
+        customizeBtn.setMinimumSize(new Dimension(120, 36));
+        customizeBtn.setMaximumSize(new Dimension(120, 36));
         customizeBtn.addActionListener(e -> selectMenuItemById(item.getId()));
+
+        JPanel actionWrap = new JPanel(new java.awt.GridBagLayout());
+        actionWrap.setOpaque(false);
+        actionWrap.setPreferredSize(new Dimension(132, cardHeight));
+        actionWrap.add(customizeBtn);
 
         card.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -911,9 +928,9 @@ public class OrdersPanel extends JPanel {
             }
         });
 
-        card.add(iconBox, BorderLayout.WEST);
+        card.add(iconWrap, BorderLayout.WEST);
         card.add(info, BorderLayout.CENTER);
-        card.add(customizeBtn, BorderLayout.EAST);
+        card.add(actionWrap, BorderLayout.EAST);
         return card;
     }
 
